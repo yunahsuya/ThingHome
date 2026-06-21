@@ -1,8 +1,20 @@
 export type ItemSource = "manual" | "text" | "ocr";
 
+export interface Category {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryInput {
+  name: string;
+}
+
 export interface Item {
   id: string;
   name: string;
+  categoryId: string | null;
   purchaseDate: string | null;
   expiryDate: string | null;
   shelfLifeDays: number | null;
@@ -19,6 +31,7 @@ export interface Item {
 
 export interface ItemInput {
   name: string;
+  categoryId?: string | null;
   purchaseDate?: string | null;
   expiryDate?: string | null;
   shelfLifeDays?: number | null;

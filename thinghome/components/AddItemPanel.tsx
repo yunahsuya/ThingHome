@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ItemInput, ItemSubmitOptions, ParsedItemDraft } from "@/lib/types";
+import type { Category, ItemInput, ItemSubmitOptions, ParsedItemDraft } from "@/lib/types";
 import { draftToInput, uploadImageFile } from "@/lib/utils";
 import { ItemForm } from "./ItemForm";
 import { OcrUpload, type OcrResult } from "./OcrUpload";
@@ -9,11 +9,12 @@ import { OcrUpload, type OcrResult } from "./OcrUpload";
 type Tab = "photo" | "text" | "manual";
 
 interface AddItemPanelProps {
+  categories: Category[];
   onCreated: () => void;
   onClose: () => void;
 }
 
-export function AddItemPanel({ onCreated, onClose }: AddItemPanelProps) {
+export function AddItemPanel({ categories, onCreated, onClose }: AddItemPanelProps) {
   const [tab, setTab] = useState<Tab>("photo");
   const [draft, setDraft] = useState<ParsedItemDraft | null>(null);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
@@ -86,12 +87,12 @@ export function AddItemPanel({ onCreated, onClose }: AddItemPanelProps) {
       : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-950">
+    <div className="modal-overlay p-4">
+      <div className="modal-panel max-w-2xl">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold">新增商品</h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
               拍照辨識、貼文字或手動輸入，確認後儲存
             </p>
           </div>
@@ -105,7 +106,10 @@ export function AddItemPanel({ onCreated, onClose }: AddItemPanelProps) {
           </button>
         </div>
 
-        <div className="mb-6 flex gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900">
+        <div
+          className="mb-6 flex gap-1 rounded-lg p-1"
+          style={{ background: "rgba(120, 113, 108, 0.08)" }}
+        >
           {(
             [
               ["photo", "📷 拍照"],
@@ -116,11 +120,7 @@ export function AddItemPanel({ onCreated, onClose }: AddItemPanelProps) {
             <button
               key={key}
               type="button"
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                tab === key
-                  ? "bg-white text-zinc-900 shadow dark:bg-zinc-800 dark:text-zinc-50"
-                  : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400"
-              }`}
+              className={`tab-btn ${tab === key ? "tab-btn--active" : ""}`}
               onClick={() => {
                 setTab(key);
                 resetDraft();
@@ -158,7 +158,7 @@ export function AddItemPanel({ onCreated, onClose }: AddItemPanelProps) {
         {formInitial && (
           <div className="space-y-4">
             {draft && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+              <div className="info-banner">
                 <p className="font-medium">
                   辨識信心：
                   {draft.confidence === "high"
@@ -180,6 +180,7 @@ export function AddItemPanel({ onCreated, onClose }: AddItemPanelProps) {
             )}
             <ItemForm
               initial={formInitial}
+              categories={categories}
               imagePreview={ocrPreview}
               submitLabel={tab === "manual" ? "新增商品" : "確認新增"}
               onSubmit={saveItem}

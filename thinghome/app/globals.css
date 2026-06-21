@@ -1,8 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
+  color-scheme: light;
+  --background: #f0e4d6;
+  --foreground: #443328;
+  --surface: #faf6f0;
+  --surface-raised: #fdfbf8;
+  --border: rgba(68, 51, 40, 0.09);
+  --border-strong: rgba(68, 51, 40, 0.15);
+  --muted: #9a8572;
+  --accent: #c9956a;
+  --accent-soft: rgba(201, 149, 106, 0.14);
+  --accent-glow: rgba(201, 149, 106, 0.24);
+  --warn: #d49545;
+  --warn-soft: rgba(212, 149, 69, 0.14);
+  --danger: #d06858;
+  --danger-soft: rgba(208, 104, 88, 0.1);
+  --shadow: 0 1px 3px rgba(68, 51, 40, 0.07), 0 4px 16px rgba(68, 51, 40, 0.05);
+  --shadow-lg: 0 4px 24px rgba(68, 51, 40, 0.09);
 }
 
 @theme inline {
@@ -12,55 +27,156 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #fafafa;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+.app-bg {
+  background: var(--background);
+}
+
 .input {
-  @apply w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900;
+  @apply w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition;
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
+}
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .btn-primary {
-  @apply inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50;
+  background: var(--accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .btn-secondary {
-  @apply inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--foreground);
+}
+.btn-secondary:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .btn-danger {
-  @apply inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition disabled:opacity-50;
+  border: 1px solid transparent;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(208, 104, 88, 0.15);
+  border-color: rgba(208, 104, 88, 0.25);
 }
 
 .btn-ghost {
-  @apply inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800;
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-lg transition;
+  color: var(--muted);
+}
+.btn-ghost:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .card {
-  @apply rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+  @apply rounded-xl p-5;
+}
+
+.summary-card {
+  @apply relative overflow-hidden rounded-xl p-5;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.summary-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0.6;
+}
+.summary-card--warn::before {
+  background: var(--warn);
+}
+.summary-card--danger::before {
+  background: var(--danger);
 }
 
 .badge {
-  @apply inline-flex rounded-full px-3 py-1 text-xs font-medium;
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
 }
-
 .badge-neutral {
-  @apply bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
-
 .badge-warn {
-  @apply bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300;
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.badge-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
-.badge-danger {
-  @apply bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300;
+.stat-box {
+  @apply rounded-lg px-3 py-2.5;
+  background: rgba(201, 149, 106, 0.1);
+  border: 1px solid var(--border);
+}
+
+.empty-state {
+  @apply rounded-xl px-6 py-16 text-center;
+  border: 1.5px dashed var(--border-strong);
+  background: var(--surface);
+}
+
+.modal-overlay {
+  @apply fixed inset-0 z-50 flex items-end justify-center sm:items-center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.modal-panel {
+  @apply w-full max-h-[90vh] overflow-y-auto rounded-t-2xl p-6 sm:max-w-lg sm:rounded-2xl;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+}
+
+.tab-btn {
+  @apply flex-1 rounded-lg px-3 py-2 text-sm font-medium transition;
+  color: var(--muted);
+}
+.tab-btn:hover {
+  color: var(--foreground);
+  background: rgba(201, 149, 106, 0.1);
+}
+.info-banner {
+  @apply rounded-xl border px-4 py-3 text-sm;
+  border-color: rgba(212, 149, 69, 0.35);
+  background: var(--warn-soft);
+  color: var(--foreground);
+}
+
+.tab-btn--active {
+  background: var(--accent-soft);
+  color: var(--accent);
 }

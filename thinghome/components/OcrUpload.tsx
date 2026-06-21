@@ -76,7 +76,8 @@ export function OcrUpload({ onParsed }: OcrUploadProps) {
   return (
     <div className="space-y-4">
       <div
-        className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center transition hover:border-emerald-400 hover:bg-emerald-50/40 dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-emerald-600"
+        className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+        style={{ borderColor: "var(--border-strong)", background: "var(--surface)" }}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
         role="button"
@@ -92,7 +93,7 @@ export function OcrUpload({ onParsed }: OcrUploadProps) {
           disabled={loading}
         />
         <p className="text-lg font-medium">📷 上傳或拍攝收據／標籤照片</p>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
           OCR 在本機辨識，照片會存到 data/uploads/
         </p>
       </div>
@@ -101,24 +102,25 @@ export function OcrUpload({ onParsed }: OcrUploadProps) {
         <img
           src={preview}
           alt="預覽"
-          className="max-h-48 w-full rounded-xl object-contain bg-zinc-100 dark:bg-zinc-900"
+          className="max-h-48 w-full rounded-xl object-contain"
+          style={{ background: "var(--accent-soft)" }}
         />
       )}
 
       {loading && (
         <div className="space-y-2">
-          <div className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+          <div className="h-2 overflow-hidden rounded-full" style={{ background: "var(--accent-soft)" }}>
             <div
-              className="h-full rounded-full bg-emerald-500 transition-all"
-              style={{ width: `${progress}%` }}
+              className="h-full rounded-full transition-all"
+              style={{ width: `${progress}%`, background: "var(--accent)" }}
             />
           </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{status}</p>
+          <p className="text-sm" style={{ color: "var(--muted)" }}>{status}</p>
         </div>
       )}
 
       {!loading && status && (
-        <p className="text-sm text-emerald-700 dark:text-emerald-400">{status}</p>
+        <p className="text-sm" style={{ color: "var(--accent)" }}>{status}</p>
       )}
     </div>
   );

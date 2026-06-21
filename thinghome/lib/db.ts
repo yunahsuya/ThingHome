@@ -18,7 +18,11 @@ async function ensureDataFile() {
 async function readItems(): Promise<Item[]> {
   await ensureDataFile();
   const raw = await fs.readFile(DATA_FILE, "utf-8");
-  return JSON.parse(raw) as Item[];
+  const items = JSON.parse(raw) as Item[];
+  return items.map((item) => ({
+    ...item,
+    categoryId: item.categoryId ?? null,
+  }));
 }
 
 async function writeItems(items: Item[]) {
@@ -45,6 +49,7 @@ export async function createItem(input: ItemInput): Promise<Item> {
   const item: Item = {
     id: crypto.randomUUID(),
     name: input.name.trim(),
+    categoryId: input.categoryId ?? null,
     purchaseDate: input.purchaseDate ?? null,
     expiryDate: input.expiryDate ?? null,
     shelfLifeDays: input.shelfLifeDays ?? null,
@@ -93,6 +98,25 @@ export async function updateItem(
   items[index] = updated;
   await writeItems(items);
   return updated;
+}
+
+export async function unlinkCategoryFromItems(
+  categoryId: string,
+): Promise<void> {
+  const items = await readItems();
+  let changed = false;
+
+  const updated = items.map((item) => {
+    if (item.categoryId !== categoryId) return item;
+    changed = true;
+    return {
+      ...item,
+      categoryId: null,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  if (changed) await writeItems(updated);
 }
 
 export async function deleteItem(id: string): Promise<boolean> {

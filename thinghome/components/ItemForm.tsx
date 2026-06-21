@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
-import type { ItemInput, ItemSubmitOptions } from "@/lib/types";
+import type { Category, ItemInput, ItemSubmitOptions } from "@/lib/types";
 import { getImageUrl } from "@/lib/utils";
 
 interface ItemFormProps {
   initial: ItemInput;
   submitLabel: string;
+  categories?: Category[];
   imagePreview?: string | null;
   onSubmit: (input: ItemInput, options?: ItemSubmitOptions) => Promise<void>;
   onCancel?: () => void;
@@ -14,6 +15,7 @@ interface ItemFormProps {
 
 const empty: ItemInput = {
   name: "",
+  categoryId: null,
   purchaseDate: null,
   expiryDate: null,
   shelfLifeDays: null,
@@ -29,6 +31,7 @@ const empty: ItemInput = {
 export function ItemForm({
   initial,
   submitLabel,
+  categories = [],
   imagePreview,
   onSubmit,
   onCancel,
@@ -108,10 +111,14 @@ export function ItemForm({
             <img
               src={displayPreview}
               alt="商品照片"
-              className="max-h-40 w-full rounded-xl object-contain bg-zinc-100 dark:bg-zinc-900"
+              className="max-h-40 w-full rounded-xl object-contain"
+              style={{ background: "var(--accent-soft)" }}
             />
           ) : (
-            <div className="rounded-xl border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+            <div
+              className="rounded-xl border border-dashed px-4 py-8 text-center text-sm"
+              style={{ borderColor: "var(--border-strong)", color: "var(--muted)" }}
+            >
               尚未加入照片
             </div>
           )}
@@ -154,6 +161,26 @@ export function ItemForm({
           placeholder="例如：鮮奶、衛生紙"
           required
         />
+      </Field>
+
+      <Field label="分類">
+        <select
+          className="input"
+          value={form.categoryId ?? ""}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              categoryId: e.target.value || null,
+            })
+          }
+        >
+          <option value="">未分類</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
       </Field>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -282,7 +309,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+      <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
         {label}
       </span>
       {children}
