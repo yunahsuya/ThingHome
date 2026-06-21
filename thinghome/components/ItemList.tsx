@@ -312,12 +312,12 @@ function ItemCard({
 
   return (
     <article className={embedded ? "group" : "card group"}>
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
         {item.imagePaths.length > 0 ? (
           <ItemImageGallery paths={item.imagePaths} alt={item.name} />
         ) : (
           <div
-            className="flex h-48 w-48 shrink-0 items-center justify-center rounded-xl text-4xl sm:h-56 sm:w-56 sm:text-5xl"
+            className="flex h-48 w-full shrink-0 items-center justify-center rounded-xl text-4xl sm:h-56 sm:w-56 sm:text-5xl"
             style={{ background: "var(--accent-soft)", border: "1px solid var(--border)" }}
           >
             📦

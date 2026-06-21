@@ -12,6 +12,17 @@ import {
   scheduleBackupSnapshot,
   type ThingHomeBackup,
 } from "@/lib/backup";
+import {
+  disconnectSyncFolder,
+  getFolderSyncInfo,
+  getLocalDataTimestamp,
+  isFolderSyncSupported,
+  pickSyncFolder,
+  scheduleFolderSync,
+  syncWithBoundFolder,
+  type FolderSyncInfo,
+  type FolderSyncResult,
+} from "@/lib/folder-sync";
 import { parseProductText } from "@/lib/parse-text";
 import type {
   Category,
@@ -72,8 +83,37 @@ async function buildCurrentBackup(): Promise<ThingHomeBackup> {
   );
 }
 
+async function runFolderSync(): Promise<FolderSyncResult> {
+  const items = readAllItems();
+  const categories = readAllCategories();
+  const localBackup = await buildCurrentBackup();
+
+  const result = await syncWithBoundFolder({
+    localBackup,
+    localTimestamp: getLocalDataTimestamp(items, categories),
+    applyRemote: async (backup) => {
+      await applyBackup(
+        backup,
+        "replace",
+        readAllItems,
+        writeAllItems,
+        readAllCategories,
+        writeAllCategories,
+        saveImageBlob,
+      );
+    },
+  });
+
+  if (result.action === "pushed" && result.localAt) {
+    saveBackupSnapshot({ ...localBackup, exportedAt: result.localAt });
+  }
+
+  return result;
+}
+
 function notifyDataChanged() {
   scheduleBackupSnapshot(buildCurrentBackup);
+  scheduleFolderSync(runFolderSync);
 }
 
 function ensureDefaultCategories() {
@@ -451,4 +491,36 @@ export async function importBackupFromFile(
   return result;
 }
 
-export { getLastBackupAt };
+export async function bindSyncFolder(): Promise<FolderSyncResult> {
+  const result = await pickSyncFolder();
+  if (result.action === "unsupported" || result.action === "permission-denied") {
+    return result;
+  }
+
+  const syncResult = await runFolderSync();
+  return {
+    ...syncResult,
+    message: result.message ?? syncResult.message,
+  };
+}
+
+export async function unbindSyncFolder(): Promise<void> {
+  await disconnectSyncFolder();
+}
+
+export async function syncFolderNow(): Promise<FolderSyncResult> {
+  return runFolderSync();
+}
+
+export async function syncFolderOnLoad(): Promise<FolderSyncResult | null> {
+  if (!getFolderSyncInfo().bound) return null;
+  return runFolderSync();
+}
+
+export {
+  getFolderSyncInfo,
+  getLastBackupAt,
+  isFolderSyncSupported,
+  type FolderSyncInfo,
+  type FolderSyncResult,
+};

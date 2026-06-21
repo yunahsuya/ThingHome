@@ -173,7 +173,7 @@ export function ItemImageGallery({ urls: urlsProp, paths, alt }: ItemImageGaller
   return (
     <>
       <div
-        className="relative h-48 w-48 shrink-0 sm:h-56 sm:w-56"
+        className="relative w-full shrink-0 sm:h-56 sm:w-56"
         onTouchStart={(e) => {
           touchStartX.current = e.touches[0]?.clientX ?? null;
         }}
@@ -186,7 +186,7 @@ export function ItemImageGallery({ urls: urlsProp, paths, alt }: ItemImageGaller
       >
         <button
           type="button"
-          className="block h-48 w-48 cursor-zoom-in overflow-hidden rounded-xl sm:h-56 sm:w-56"
+          className="block aspect-[4/3] w-full cursor-zoom-in overflow-hidden rounded-xl sm:aspect-auto sm:h-56 sm:w-56"
           onClick={openViewer}
           aria-label={`查看${alt}照片`}
         >

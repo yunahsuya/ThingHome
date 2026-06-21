@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Category, Item } from "@/lib/types";
 import { getDaysRemaining } from "@/lib/parse-text";
-import { listCategories, listItems, migrateLegacyDataIfNeeded, restoreFromBackupSnapshotIfNeeded } from "@/lib/client-api";
+import { listCategories, listItems, migrateLegacyDataIfNeeded, restoreFromBackupSnapshotIfNeeded, syncFolderOnLoad } from "@/lib/client-api";
 import { BackupPanel } from "./BackupPanel";
 import { filterItemsBySearch, normalizeSearchQuery } from "@/lib/search";
 import { AddItemPanel } from "./AddItemPanel";
@@ -39,8 +39,29 @@ export function HomeClient() {
     void (async () => {
       await restoreFromBackupSnapshotIfNeeded();
       await migrateLegacyDataIfNeeded();
+      const syncResult = await syncFolderOnLoad();
       await loadAll();
+      if (syncResult?.action === "pulled") {
+        await loadAll();
+      }
     })();
+  }, [loadAll]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+      void (async () => {
+        const syncResult = await syncFolderOnLoad();
+        if (syncResult?.action === "pulled") {
+          await loadAll();
+        }
+      })();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [loadAll]);
 
   const categoryMap = useMemo(
