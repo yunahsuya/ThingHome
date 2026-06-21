@@ -41,6 +41,13 @@ interface GitHubContentResponse {
   content?: string;
   sha?: string;
   message?: string;
+  type?: string;
+  download_url?: string;
+}
+
+interface GitHubBlobResponse {
+  content?: string;
+  message?: string;
 }
 
 function toBase64Utf8(text: string): string {
@@ -162,15 +169,53 @@ async function fetchBackupFromGitHub(
   if (!res.ok) throw new Error(await readGitHubError(res));
 
   const data = (await res.json()) as GitHubContentResponse;
-  if (!data.content || !data.sha) {
+  if (data.type === "dir") {
+    throw new Error("路徑指向資料夾而非檔案，請檢查「檔案路徑」設定");
+  }
+  if (!data.sha) {
     throw new Error("無法讀取 GitHub 備份檔內容");
   }
 
-  const text = fromBase64Utf8(data.content);
+  let text: string;
+  if (data.content) {
+    text = fromBase64Utf8(data.content);
+  } else {
+    // GitHub Contents API 對超過 1MB 的檔案不會回傳 content，需另取內容
+    text = await fetchGitHubFileText(config, parsed, data);
+  }
+
   return {
     backup: parseBackupFile(JSON.parse(text) as unknown),
     sha: data.sha,
   };
+}
+
+async function fetchGitHubFileText(
+  config: GitHubSyncConfig,
+  parsed: { owner: string; name: string },
+  file: GitHubContentResponse,
+): Promise<string> {
+  if (file.sha) {
+    const blobRes = await fetch(
+      `https://api.github.com/repos/${parsed.owner}/${parsed.name}/git/blobs/${file.sha}`,
+      { headers: githubHeaders(config.token) },
+    );
+    if (blobRes.ok) {
+      const blob = (await blobRes.json()) as GitHubBlobResponse;
+      if (blob.content) return fromBase64Utf8(blob.content);
+    }
+  }
+
+  if (file.download_url) {
+    const downloadRes = await fetch(file.download_url, {
+      headers: githubHeaders(config.token),
+    });
+    if (downloadRes.ok) return downloadRes.text();
+  }
+
+  throw new Error(
+    "無法讀取 GitHub 備份檔內容（檔案可能過大或路徑設定不正確）",
+  );
 }
 
 async function pushBackupToGitHub(
