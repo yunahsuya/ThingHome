@@ -264,7 +264,6 @@ export function ItemForm({
                 type="file"
                 accept="image/*"
                 multiple
-                capture="environment"
                 className="hidden"
                 onChange={handleImageChange}
                 disabled={ocrLoading}
@@ -278,7 +277,6 @@ export function ItemForm({
                     ref={ocrInputRef}
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     className="hidden"
                     onChange={handleOcrImageChange}
                     disabled={ocrLoading}

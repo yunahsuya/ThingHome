@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Category, Item } from "@/lib/types";
 import { getDaysRemaining } from "@/lib/parse-text";
-import { listCategories, listItems } from "@/lib/client-api";
+import { listCategories, listItems, migrateLegacyDataIfNeeded, restoreFromBackupSnapshotIfNeeded } from "@/lib/client-api";
+import { BackupPanel } from "./BackupPanel";
 import { filterItemsBySearch, normalizeSearchQuery } from "@/lib/search";
 import { AddItemPanel } from "./AddItemPanel";
 import { CategoryPanel } from "./CategoryPanel";
@@ -15,6 +16,7 @@ export function HomeClient() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
+  const [showBackup, setShowBackup] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -34,7 +36,11 @@ export function HomeClient() {
   }, [loadItems, loadCategories]);
 
   useEffect(() => {
-    void loadAll();
+    void (async () => {
+      await restoreFromBackupSnapshotIfNeeded();
+      await migrateLegacyDataIfNeeded();
+      await loadAll();
+    })();
   }, [loadAll]);
 
   const categoryMap = useMemo(
@@ -117,7 +123,17 @@ export function HomeClient() {
 
       <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="text-base font-semibold">我的商品</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setShowBackup(true)}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+            </svg>
+            備份
+          </button>
           <button
             type="button"
             className="btn-secondary"
@@ -238,6 +254,13 @@ export function HomeClient() {
         <CategoryPanel
           onChanged={() => void loadAll()}
           onClose={() => setShowCategories(false)}
+        />
+      )}
+
+      {showBackup && (
+        <BackupPanel
+          onChanged={() => void loadAll()}
+          onClose={() => setShowBackup(false)}
         />
       )}
     </div>

@@ -1,5 +1,19 @@
 "use client";
 
+import { BASE_PATH } from "@/lib/site";
+import {
+  applyBackup,
+  buildBackup,
+  downloadBackupFile,
+  getBackupSnapshot,
+  getLastBackupAt,
+  isAutoBackupEnabled,
+  parseBackupFile,
+  saveBackupSnapshot,
+  scheduleAutoBackup,
+  setAutoBackupEnabled,
+  type ThingHomeBackup,
+} from "@/lib/backup";
 import { parseProductText } from "@/lib/parse-text";
 import type {
   Category,
@@ -11,6 +25,7 @@ import type {
 
 const ITEMS_KEY = "thinghome:items";
 const CATEGORIES_KEY = "thinghome:categories";
+const LEGACY_MIGRATION_KEY = "thinghome:legacy-migrated-v1";
 const IMAGE_DB = "thinghome-images";
 const IMAGE_STORE = "images";
 
@@ -33,6 +48,34 @@ function readJson<T>(key: string, fallback: T): T {
 
 function writeJson<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function readAllItems(): Item[] {
+  return readJson<Item[]>(ITEMS_KEY, []);
+}
+
+function writeAllItems(items: Item[]) {
+  writeJson(ITEMS_KEY, items);
+}
+
+function readAllCategories(): Category[] {
+  return readJson<Category[]>(CATEGORIES_KEY, []);
+}
+
+function writeAllCategories(categories: Category[]) {
+  writeJson(CATEGORIES_KEY, categories);
+}
+
+async function buildCurrentBackup(): Promise<ThingHomeBackup> {
+  return buildBackup(
+    readAllItems(),
+    readAllCategories(),
+    getImageBlob,
+  );
+}
+
+function notifyDataChanged() {
+  scheduleAutoBackup(buildCurrentBackup);
 }
 
 function ensureDefaultCategories() {
@@ -137,7 +180,8 @@ export async function createItem(input: ItemInput): Promise<Item> {
   };
 
   items.push(item);
-  writeJson(ITEMS_KEY, items);
+  writeAllItems(items);
+  notifyDataChanged();
   return item;
 }
 
@@ -173,7 +217,8 @@ export async function updateItem(
   };
 
   items[index] = updated;
-  writeJson(ITEMS_KEY, items);
+  writeAllItems(items);
+  notifyDataChanged();
   return updated;
 }
 
@@ -187,10 +232,8 @@ export async function deleteItem(id: string): Promise<boolean> {
     await deleteImageBlob(filename);
   }
 
-  writeJson(
-    ITEMS_KEY,
-    items.filter((item) => item.id !== id),
-  );
+  writeAllItems(items.filter((item) => item.id !== id));
+  notifyDataChanged();
   return true;
 }
 
@@ -213,7 +256,8 @@ export async function createCategory(input: CategoryInput): Promise<Category> {
   };
 
   categories.push(category);
-  writeJson(CATEGORIES_KEY, categories);
+  writeAllCategories(categories);
+  notifyDataChanged();
   return category;
 }
 
@@ -233,7 +277,8 @@ export async function updateCategory(
   };
 
   categories[index] = updated;
-  writeJson(CATEGORIES_KEY, categories);
+  writeAllCategories(categories);
+  notifyDataChanged();
   return updated;
 }
 
@@ -248,11 +293,9 @@ export async function deleteCategory(id: string): Promise<boolean> {
       ? { ...item, categoryId: null, updatedAt: new Date().toISOString() }
       : item,
   );
-  writeJson(ITEMS_KEY, updatedItems);
-  writeJson(
-    CATEGORIES_KEY,
-    categories.filter((category) => category.id !== id),
-  );
+  writeAllItems(updatedItems);
+  writeAllCategories(categories.filter((category) => category.id !== id));
+  notifyDataChanged();
   return true;
 }
 
@@ -298,3 +341,120 @@ export async function getImageUrls(
   const urls = await Promise.all(imagePaths.map((path) => getImageUrl(path)));
   return urls.filter((url): url is string => url !== null);
 }
+
+export async function migrateLegacyDataIfNeeded(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (localStorage.getItem(LEGACY_MIGRATION_KEY)) return;
+
+  const base = `${BASE_PATH}/legacy`;
+
+  try {
+    const [itemsRes, categoriesRes] = await Promise.all([
+      fetch(`${base}/items.json`),
+      fetch(`${base}/categories.json`),
+    ]);
+    if (!itemsRes.ok) return;
+
+    const legacyItems = (await itemsRes.json()) as Item[];
+    const legacyCategories = categoriesRes.ok
+      ? ((await categoriesRes.json()) as Category[])
+      : [];
+
+    ensureDefaultCategories();
+    const categories = readJson<Category[]>(CATEGORIES_KEY, []);
+    const categoryIds = new Set(categories.map((category) => category.id));
+    let categoriesChanged = false;
+
+    for (const category of legacyCategories) {
+      if (!categoryIds.has(category.id)) {
+        categories.push(category);
+        categoryIds.add(category.id);
+        categoriesChanged = true;
+      }
+    }
+    if (categoriesChanged) writeJson(CATEGORIES_KEY, categories);
+
+    const items = readJson<Item[]>(ITEMS_KEY, []);
+    const itemIds = new Set(items.map((item) => item.id));
+    let itemsChanged = false;
+
+    for (const item of legacyItems) {
+      if (!itemIds.has(item.id)) {
+        items.push(item);
+        itemIds.add(item.id);
+        itemsChanged = true;
+      }
+    }
+    if (itemsChanged) writeJson(ITEMS_KEY, items);
+
+    const imageFilenames = new Set<string>();
+    for (const item of legacyItems) {
+      for (const filename of item.imagePaths ?? []) {
+        if (filename) imageFilenames.add(filename);
+      }
+    }
+
+    for (const filename of imageFilenames) {
+      const existing = await getImageBlob(filename);
+      if (existing) continue;
+
+      const res = await fetch(`${base}/uploads/${filename}`);
+      if (!res.ok) continue;
+
+      await saveImageBlob(filename, await res.blob());
+    }
+
+    localStorage.setItem(LEGACY_MIGRATION_KEY, new Date().toISOString());
+    notifyDataChanged();
+  } catch {
+    // 無 legacy 資料或匯入失敗時略過，不影響正常使用
+  }
+}
+
+export async function restoreFromBackupSnapshotIfNeeded(): Promise<void> {
+  if (readAllItems().length > 0) return;
+
+  const snapshot = getBackupSnapshot();
+  if (!snapshot) return;
+
+  await applyBackup(
+    snapshot,
+    "replace",
+    readAllItems,
+    writeAllItems,
+    readAllCategories,
+    writeAllCategories,
+    saveImageBlob,
+  );
+}
+
+export async function exportBackupDownload(): Promise<void> {
+  const backup = await buildCurrentBackup();
+  saveBackupSnapshot(backup);
+  downloadBackupFile(backup);
+}
+
+export async function importBackupFromFile(
+  file: File,
+  mode: "merge" | "replace",
+): Promise<{ itemsAdded: number; categoriesAdded: number }> {
+  const text = await file.text();
+  const backup = parseBackupFile(JSON.parse(text) as unknown);
+  const result = await applyBackup(
+    backup,
+    mode,
+    readAllItems,
+    writeAllItems,
+    readAllCategories,
+    writeAllCategories,
+    saveImageBlob,
+  );
+  notifyDataChanged();
+  return result;
+}
+
+export {
+  getLastBackupAt,
+  isAutoBackupEnabled,
+  setAutoBackupEnabled,
+};

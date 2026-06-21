@@ -70,7 +70,6 @@ export function OcrUpload({ onParsed, compact = false }: OcrUploadProps) {
           ref={inputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={handleFileChange}
           disabled={loading}

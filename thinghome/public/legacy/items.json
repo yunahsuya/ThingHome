@@ -1,0 +1,87 @@
+[
+  {
+    "id": "caaf758a-99ae-4edc-b0eb-241d980395ea",
+    "name": "不二果子-餅乾",
+    "categoryId": "d0a51cdc-8e83-4897-b084-b43acfe398ad",
+    "location": null,
+    "purchaseDate": "2026-06-18",
+    "expiryDate": "2026-07-16",
+    "shelfLifeDays": null,
+    "quantity": 1,
+    "remaining": 1,
+    "price": 515,
+    "unit": null,
+    "notes": "\n",
+    "imagePaths": [
+      "5773c01d-b0a2-4aae-8765-a1045d94bde6.jpg"
+    ],
+    "source": "ocr",
+    "batchId": null,
+    "createdAt": "2026-06-21T08:39:52.272Z",
+    "updatedAt": "2026-06-21T10:09:49.238Z"
+  },
+  {
+    "id": "18622193-5fa5-45df-baa6-859ccc4cdd95",
+    "name": "iPhone 15 Pro Max 3D 壯撞貼",
+    "categoryId": null,
+    "location": null,
+    "purchaseDate": "2026-06-21",
+    "expiryDate": null,
+    "shelfLifeDays": null,
+    "quantity": 1,
+    "remaining": 1,
+    "price": 693,
+    "unit": null,
+    "notes": null,
+    "imagePaths": [
+      "9694e1ee-d601-44c3-ad73-ba85d6c69c80.jpg"
+    ],
+    "source": "ocr",
+    "batchId": null,
+    "createdAt": "2026-06-21T10:17:11.564Z",
+    "updatedAt": "2026-06-21T10:17:21.901Z"
+  },
+  {
+    "id": "23075d5a-8540-47a5-9079-4c85bdf82265",
+    "name": "i [1] iPhone 15 Pro Max 3D 壯 撞 貼 和",
+    "categoryId": null,
+    "location": null,
+    "purchaseDate": null,
+    "expiryDate": null,
+    "shelfLifeDays": null,
+    "quantity": 3,
+    "remaining": 3,
+    "price": 893,
+    "unit": null,
+    "notes": "00:17 a= ull 4G [00\n<4 LINE\n© ® servicerhinoshieldtw &\n犀牛 盾 RHINOSHIELD\n- a a 生 生 99-99\n$893.00\n= 掛 繩 夾 片 $200.00\n[= Gray\ni [1] iPhone 15 Pro Max 3D 壯 撞 貼 和\n) PRO $693.00\nTransparent\n0 LINE-IMP-953438 (-$297.00)\n小 計 .2 個 品 項 $893.00\nEEO 免費\n總 計 Twp $893.00\n包含 營業 稅 $42.52\n0 總 節省 金 額 $297.00\n確認 #AOHL6TX6J\n謝謝 您!\n[ @) 行 天 宮 AS\nLie I wy pe - 全\n同 區 市 中 山區 一 | REE",
+    "imagePaths": [
+      "d4bf64a2-2ada-47ec-a0d2-3916b4e0ceaf.jpg"
+    ],
+    "source": "ocr",
+    "batchId": null,
+    "createdAt": "2026-06-21T11:20:31.124Z",
+    "updatedAt": "2026-06-21T11:20:31.124Z"
+  },
+  {
+    "id": "12e5a03a-a20b-4f3c-95bb-662967e50992",
+    "name": "i [1] iPhone 15 Pro Max 3D 壯 撞 貼 和",
+    "categoryId": null,
+    "location": null,
+    "purchaseDate": null,
+    "expiryDate": null,
+    "shelfLifeDays": null,
+    "quantity": 3,
+    "remaining": 3,
+    "price": 893,
+    "unit": null,
+    "notes": "00:17 a= ull 4G [00\n<4 LINE\n© ® servicerhinoshieldtw &\n犀牛 盾 RHINOSHIELD\n- a a 生 生 99-99\n$893.00\n= 掛 繩 夾 片 $200.00\n[= Gray\ni [1] iPhone 15 Pro Max 3D 壯 撞 貼 和\n) PRO $693.00\nTransparent\n0 LINE-IMP-953438 (-$297.00)\n小 計 .2 個 品 項 $893.00\nEEO 免費\n總 計 Twp $893.00\n包含 營業 稅 $42.52\n0 總 節省 金 額 $297.00\n確認 #AOHL6TX6J\n謝謝 您!\n[ @) 行 天 宮 AS\nLie I wy pe - 全\n同 區 市 中 山區 一 | REE",
+    "imagePaths": [
+      "63b8d785-9196-4e86-a397-f81dfc1bd31f.jpg",
+      "13049d8d-0348-415f-83ab-73904f3ac127.jpg"
+    ],
+    "source": "ocr",
+    "batchId": null,
+    "createdAt": "2026-06-21T11:20:31.206Z",
+    "updatedAt": "2026-06-21T11:40:10.434Z"
+  }
+]
