@@ -15,6 +15,7 @@ export interface Item {
   id: string;
   name: string;
   categoryId: string | null;
+  location: string | null;
   purchaseDate: string | null;
   expiryDate: string | null;
   shelfLifeDays: number | null;
@@ -23,8 +24,9 @@ export interface Item {
   price: number | null;
   unit: string | null;
   notes: string | null;
-  imagePath: string | null;
+  imagePaths: string[];
   source: ItemSource;
+  batchId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -32,6 +34,7 @@ export interface Item {
 export interface ItemInput {
   name: string;
   categoryId?: string | null;
+  location?: string | null;
   purchaseDate?: string | null;
   expiryDate?: string | null;
   shelfLifeDays?: number | null;
@@ -40,13 +43,14 @@ export interface ItemInput {
   price?: number | null;
   unit?: string | null;
   notes?: string | null;
-  imagePath?: string | null;
+  imagePaths?: string[];
   source?: ItemSource;
+  batchId?: string | null;
 }
 
 export interface ItemSubmitOptions {
-  imageFile?: File | null;
-  removeImage?: boolean;
+  addedImageFiles?: File[];
+  removedImagePaths?: string[];
 }
 
 export interface ParsedItemDraft {

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { Category, ItemInput, ItemSubmitOptions, ParsedItemDraft } from "@/lib/types";
-import { draftToInput, uploadImageFile } from "@/lib/utils";
-import { ItemForm } from "./ItemForm";
+import { draftToInput, resolveItemImagePaths } from "@/lib/utils";
+import { createEmptyFormEntry, createFormKey, MultiItemForm, type ItemFormEntry } from "./MultiItemForm";
 import { OcrUpload, type OcrResult } from "./OcrUpload";
 
 type Tab = "photo" | "text" | "manual";
@@ -12,30 +12,51 @@ interface AddItemPanelProps {
   categories: Category[];
   onCreated: () => void;
   onClose: () => void;
+  onCategoriesChanged: () => void | Promise<void>;
 }
 
-export function AddItemPanel({ categories, onCreated, onClose }: AddItemPanelProps) {
+function createEntries(
+  initial: ItemInput,
+  imagePreview?: string | null,
+  ocrFile?: File | null,
+  extraCount = 1,
+): ItemFormEntry[] {
+  const entries: ItemFormEntry[] = [
+    {
+      key: createFormKey(),
+      initial,
+      imagePreview: imagePreview ?? null,
+      ocrFile: ocrFile ?? null,
+    },
+  ];
+  for (let i = 1; i < extraCount; i += 1) {
+    entries.push(createEmptyFormEntry(initial.source ?? "manual"));
+  }
+  return entries;
+}
+
+export function AddItemPanel({
+  categories,
+  onCreated,
+  onClose,
+  onCategoriesChanged,
+}: AddItemPanelProps) {
   const [tab, setTab] = useState<Tab>("photo");
   const [draft, setDraft] = useState<ParsedItemDraft | null>(null);
-  const [ocrFile, setOcrFile] = useState<File | null>(null);
-  const [ocrPreview, setOcrPreview] = useState<string | null>(null);
   const [textInput, setTextInput] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [entries, setEntries] = useState<ItemFormEntry[]>([]);
 
   function resetDraft() {
     setDraft(null);
-    setOcrFile(null);
-    if (ocrPreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(ocrPreview);
-    }
-    setOcrPreview(null);
+    setEntries([]);
   }
 
   function handleOcrParsed(result: OcrResult) {
     setDraft(result.draft);
-    setOcrFile(result.file);
-    setOcrPreview(result.previewUrl);
+    const initial = draftToInput(result.draft, "ocr");
+    setEntries(createEntries(initial, result.previewUrl, result.file, 2));
   }
 
   async function handleParseText() {
@@ -52,6 +73,8 @@ export function AddItemPanel({ categories, onCreated, onClose }: AddItemPanelPro
       if (!res.ok) throw new Error();
       const { draft: parsed } = (await res.json()) as { draft: ParsedItemDraft };
       setDraft(parsed);
+      const initial = draftToInput(parsed, "text");
+      setEntries(createEntries(initial, null, null, 2));
     } catch {
       setParseError("解析失敗");
     } finally {
@@ -59,32 +82,43 @@ export function AddItemPanel({ categories, onCreated, onClose }: AddItemPanelPro
     }
   }
 
-  async function saveItem(input: ItemInput, options?: ItemSubmitOptions) {
-    let imagePath = input.imagePath ?? null;
+  const startManual = useCallback(() => {
+    setEntries(createEntries({ name: "", source: "manual" }, null, null, 2));
+  }, []);
 
-    if (options?.removeImage) {
-      imagePath = null;
-    } else if (options?.imageFile) {
-      imagePath = await uploadImageFile(options.imageFile);
-    } else if (ocrFile && tab === "photo") {
-      imagePath = await uploadImageFile(ocrFile);
+  async function saveItems(
+    items: Array<{ input: ItemInput; options?: ItemSubmitOptions }>,
+  ) {
+    const toSave = items
+      .map((item, index) => ({ ...item, index }))
+      .filter(({ input }) => input.name.trim());
+    const batchId = toSave.length > 1 ? crypto.randomUUID() : null;
+
+    for (const { input, options, index } of toSave) {
+      const entry = entries[index];
+      const addedFiles = [...(options?.addedImageFiles ?? [])];
+      if (entry?.ocrFile && !addedFiles.includes(entry.ocrFile)) {
+        addedFiles.push(entry.ocrFile);
+      }
+
+      const imagePaths = await resolveItemImagePaths(input.imagePaths, {
+        removedImagePaths: options?.removedImagePaths,
+        addedImageFiles: addedFiles.length ? addedFiles : undefined,
+      });
+
+      const res = await fetch("/api/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...input, imagePaths, batchId }),
+      });
+      if (!res.ok) throw new Error("新增失敗");
     }
 
-    const res = await fetch("/api/items", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...input, imagePath }),
-    });
-    if (!res.ok) throw new Error("新增失敗");
     onCreated();
     onClose();
   }
 
-  const formInitial: ItemInput | null = draft
-    ? draftToInput(draft, tab === "photo" ? "ocr" : "text")
-    : tab === "manual"
-      ? { name: "", source: "manual" }
-      : null;
+  const showForm = tab === "manual" ? entries.length > 0 : entries.length > 0;
 
   return (
     <div className="modal-overlay p-4">
@@ -93,7 +127,7 @@ export function AddItemPanel({ categories, onCreated, onClose }: AddItemPanelPro
           <div>
             <h2 className="text-xl font-semibold">新增商品</h2>
             <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-              拍照辨識、貼文字或手動輸入，確認後儲存
+              可一次新增多項商品，每項可上傳多張照片
             </p>
           </div>
           <button
@@ -124,6 +158,7 @@ export function AddItemPanel({ categories, onCreated, onClose }: AddItemPanelPro
               onClick={() => {
                 setTab(key);
                 resetDraft();
+                if (key === "manual") startManual();
               }}
             >
               {label}
@@ -131,11 +166,11 @@ export function AddItemPanel({ categories, onCreated, onClose }: AddItemPanelPro
           ))}
         </div>
 
-        {tab === "photo" && !formInitial && (
+        {tab === "photo" && !showForm && (
           <OcrUpload onParsed={handleOcrParsed} />
         )}
 
-        {tab === "text" && !formInitial && (
+        {tab === "text" && !showForm && (
           <div className="space-y-4">
             <textarea
               className="input min-h-36"
@@ -155,7 +190,7 @@ export function AddItemPanel({ categories, onCreated, onClose }: AddItemPanelPro
           </div>
         )}
 
-        {formInitial && (
+        {showForm && (
           <div className="space-y-4">
             {draft && (
               <div className="info-banner">
@@ -178,12 +213,29 @@ export function AddItemPanel({ categories, onCreated, onClose }: AddItemPanelPro
                 )}
               </div>
             )}
-            <ItemForm
-              initial={formInitial}
+            <MultiItemForm
+              entries={entries}
               categories={categories}
-              imagePreview={ocrPreview}
-              submitLabel={tab === "manual" ? "新增商品" : "確認新增"}
-              onSubmit={saveItem}
+              enableOcr={tab === "photo"}
+              submitLabel={
+                tab === "manual"
+                  ? `新增 ${entries.length} 項商品`
+                  : `確認新增 ${entries.length} 項`
+              }
+              onCategoriesChanged={onCategoriesChanged}
+              onAddEntry={() =>
+                setEntries((prev) => [
+                  ...prev,
+                  createEmptyFormEntry(
+                    tab === "manual" ? "manual" : tab === "photo" ? "ocr" : "text",
+                  ),
+                ])
+              }
+              onRemoveEntry={(key) =>
+                setEntries((prev) => prev.filter((entry) => entry.key !== key))
+              }
+              minEntries={1}
+              onSubmit={saveItems}
               onCancel={() => {
                 if (tab === "manual") {
                   onClose();

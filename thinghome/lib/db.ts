@@ -6,6 +6,37 @@ import type { Item, ItemInput } from "./types";
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "items.json");
 
+type RawItem = Item & { imagePath?: string | null };
+
+function normalizeItem(raw: RawItem): Item {
+  let imagePaths: string[] = [];
+  if (Array.isArray(raw.imagePaths)) {
+    imagePaths = raw.imagePaths.filter(Boolean);
+  } else if (raw.imagePath) {
+    imagePaths = [raw.imagePath];
+  }
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    categoryId: raw.categoryId ?? null,
+    location: raw.location ?? null,
+    purchaseDate: raw.purchaseDate ?? null,
+    expiryDate: raw.expiryDate ?? null,
+    shelfLifeDays: raw.shelfLifeDays ?? null,
+    quantity: raw.quantity ?? 1,
+    remaining: raw.remaining ?? raw.quantity ?? 1,
+    price: raw.price ?? null,
+    unit: raw.unit ?? null,
+    notes: raw.notes ?? null,
+    imagePaths,
+    source: raw.source ?? "manual",
+    batchId: raw.batchId ?? null,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+  };
+}
+
 async function ensureDataFile() {
   await fs.mkdir(DATA_DIR, { recursive: true });
   try {
@@ -18,11 +49,8 @@ async function ensureDataFile() {
 async function readItems(): Promise<Item[]> {
   await ensureDataFile();
   const raw = await fs.readFile(DATA_FILE, "utf-8");
-  const items = JSON.parse(raw) as Item[];
-  return items.map((item) => ({
-    ...item,
-    categoryId: item.categoryId ?? null,
-  }));
+  const items = JSON.parse(raw) as RawItem[];
+  return items.map(normalizeItem);
 }
 
 async function writeItems(items: Item[]) {
@@ -50,6 +78,7 @@ export async function createItem(input: ItemInput): Promise<Item> {
     id: crypto.randomUUID(),
     name: input.name.trim(),
     categoryId: input.categoryId ?? null,
+    location: input.location?.trim() || null,
     purchaseDate: input.purchaseDate ?? null,
     expiryDate: input.expiryDate ?? null,
     shelfLifeDays: input.shelfLifeDays ?? null,
@@ -58,8 +87,9 @@ export async function createItem(input: ItemInput): Promise<Item> {
     price: input.price ?? null,
     unit: input.unit ?? null,
     notes: input.notes ?? null,
-    imagePath: input.imagePath ?? null,
+    imagePaths: input.imagePaths ?? [],
     source: input.source ?? "manual",
+    batchId: input.batchId ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -78,22 +108,27 @@ export async function updateItem(
   if (index === -1) return null;
 
   const current = items[index];
+  const nextImagePaths =
+    input.imagePaths !== undefined ? input.imagePaths : current.imagePaths;
+
+  const removedPaths = current.imagePaths.filter(
+    (path) => !nextImagePaths.includes(path),
+  );
+  for (const filename of removedPaths) {
+    await deleteImage(filename);
+  }
+
   const updated: Item = {
     ...current,
     ...input,
     name: input.name !== undefined ? input.name.trim() : current.name,
-    imagePath:
-      input.imagePath !== undefined ? input.imagePath : current.imagePath,
+    location:
+      input.location !== undefined
+        ? input.location?.trim() || null
+        : current.location,
+    imagePaths: nextImagePaths,
     updatedAt: new Date().toISOString(),
   };
-
-  if (
-    input.imagePath !== undefined &&
-    current.imagePath &&
-    current.imagePath !== input.imagePath
-  ) {
-    await deleteImage(current.imagePath);
-  }
 
   items[index] = updated;
   await writeItems(items);
@@ -124,7 +159,9 @@ export async function deleteItem(id: string): Promise<boolean> {
   const target = items.find((item) => item.id === id);
   if (!target) return false;
 
-  await deleteImage(target.imagePath);
+  for (const filename of target.imagePaths) {
+    await deleteImage(filename);
+  }
   await writeItems(items.filter((item) => item.id !== id));
   return true;
 }

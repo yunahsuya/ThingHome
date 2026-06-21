@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { runOcrOnFile } from "@/lib/ocr";
 import type { ParsedItemDraft } from "@/lib/types";
 
 export interface OcrResult {
@@ -11,9 +12,10 @@ export interface OcrResult {
 
 interface OcrUploadProps {
   onParsed: (result: OcrResult) => void;
+  compact?: boolean;
 }
 
-export function OcrUpload({ onParsed }: OcrUploadProps) {
+export function OcrUpload({ onParsed, compact = false }: OcrUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<string | null>(null);
@@ -30,34 +32,11 @@ export function OcrUpload({ onParsed }: OcrUploadProps) {
       setPreview(previewUrl);
 
       try {
-        const { createWorker } = await import("tesseract.js");
-        const worker = await createWorker("chi_tra+eng", undefined, {
-          logger: (m) => {
-            if (m.status === "recognizing text" && typeof m.progress === "number") {
-              setProgress(Math.round(m.progress * 100));
-              setStatus(`辨識中… ${Math.round(m.progress * 100)}%`);
-            }
-          },
+        const draft = await runOcrOnFile(file, ({ progress, status }) => {
+          setProgress(progress);
+          setStatus(status);
         });
-
-        setStatus("正在讀取文字…");
-        const { data } = await worker.recognize(file);
-        await worker.terminate();
-
-        const response = await fetch("/api/parse", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: data.text }),
-        });
-
-        if (!response.ok) throw new Error("parse failed");
-
-        const { draft } = (await response.json()) as { draft: ParsedItemDraft };
-        onParsed({
-          draft: { ...draft, rawText: data.text, confidence: draft.confidence },
-          file,
-          previewUrl,
-        });
+        onParsed({ draft, file, previewUrl });
         setStatus("辨識完成，請確認下方欄位");
       } catch {
         setStatus("辨識失敗，請換張較清楚的照片或改用手動輸入");
@@ -76,7 +55,11 @@ export function OcrUpload({ onParsed }: OcrUploadProps) {
   return (
     <div className="space-y-4">
       <div
-        className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+        className={
+          compact
+            ? "flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-4 py-6 text-center transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+            : "flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+        }
         style={{ borderColor: "var(--border-strong)", background: "var(--surface)" }}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
@@ -92,10 +75,14 @@ export function OcrUpload({ onParsed }: OcrUploadProps) {
           onChange={handleFileChange}
           disabled={loading}
         />
-        <p className="text-lg font-medium">📷 上傳或拍攝收據／標籤照片</p>
-        <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
-          OCR 在本機辨識，照片會存到 data/uploads/
+        <p className={compact ? "text-sm font-medium" : "text-lg font-medium"}>
+          📷 {compact ? "拍照辨識此商品" : "上傳或拍攝收據／標籤照片"}
         </p>
+        {!compact && (
+          <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
+            OCR 在本機辨識，照片會存到 data/uploads/
+          </p>
+        )}
       </div>
 
       {preview && (

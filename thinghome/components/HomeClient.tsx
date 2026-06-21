@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Category, Item } from "@/lib/types";
 import { getDaysRemaining } from "@/lib/parse-text";
+import { filterItemsBySearch, normalizeSearchQuery } from "@/lib/search";
 import { AddItemPanel } from "./AddItemPanel";
 import { CategoryPanel } from "./CategoryPanel";
 import { ItemList } from "./ItemList";
@@ -14,6 +15,7 @@ export function HomeClient() {
   const [showAdd, setShowAdd] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadItems = useCallback(async () => {
     const res = await fetch("/api/items");
@@ -36,12 +38,25 @@ export function HomeClient() {
     void loadAll();
   }, [loadAll]);
 
-  const filteredItems =
-    filterCategoryId === null
-      ? items
-      : filterCategoryId === "uncategorized"
-        ? items.filter((item) => !item.categoryId)
-        : items.filter((item) => item.categoryId === filterCategoryId);
+  const categoryMap = useMemo(
+    () => new Map(categories.map((category) => [category.id, category.name])),
+    [categories],
+  );
+
+  const categoryFilteredItems = useMemo(() => {
+    if (filterCategoryId === null) return items;
+    if (filterCategoryId === "uncategorized") {
+      return items.filter((item) => !item.categoryId);
+    }
+    return items.filter((item) => item.categoryId === filterCategoryId);
+  }, [items, filterCategoryId]);
+
+  const filteredItems = useMemo(
+    () => filterItemsBySearch(categoryFilteredItems, searchQuery, categoryMap),
+    [categoryFilteredItems, searchQuery, categoryMap],
+  );
+
+  const isSearching = normalizeSearchQuery(searchQuery).length > 0;
 
   const expiringSoon = items.filter((item) => {
     const days = getDaysRemaining(item);
@@ -123,6 +138,48 @@ export function HomeClient() {
         </div>
       </div>
 
+      <div className="relative mb-4">
+        <svg
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+          style={{ color: "var(--muted)" }}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
+          />
+        </svg>
+        <input
+          type="search"
+          className="search-input"
+          placeholder="搜尋商品名稱、位置、備註、分類…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            className="btn-ghost absolute right-1 top-1/2 -translate-y-1/2"
+            onClick={() => setSearchQuery("")}
+            aria-label="清除搜尋"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {isSearching && !loading && (
+        <p className="mb-3 text-sm" style={{ color: "var(--muted)" }}>
+          找到 {filteredItems.length} 項
+          {filterCategoryId !== null ? "（已套用分類篩選）" : ""}
+        </p>
+      )}
+
       {categories.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
           <FilterChip
@@ -163,7 +220,9 @@ export function HomeClient() {
         <ItemList
           items={filteredItems}
           categories={categories}
+          searchQuery={searchQuery}
           onChanged={loadAll}
+          onCategoriesChanged={loadCategories}
         />
       )}
 
@@ -172,6 +231,7 @@ export function HomeClient() {
           categories={categories}
           onCreated={() => void loadAll()}
           onClose={() => setShowAdd(false)}
+          onCategoriesChanged={loadCategories}
         />
       )}
 
