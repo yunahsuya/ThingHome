@@ -1,0 +1,125 @@
+"use client";
+
+import { useCallback, useRef, useState } from "react";
+import type { ParsedItemDraft } from "@/lib/types";
+
+export interface OcrResult {
+  draft: ParsedItemDraft;
+  file: File;
+  previewUrl: string;
+}
+
+interface OcrUploadProps {
+  onParsed: (result: OcrResult) => void;
+}
+
+export function OcrUpload({ onParsed }: OcrUploadProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  const runOcr = useCallback(
+    async (file: File) => {
+      setLoading(true);
+      setProgress(0);
+      setStatus("載入 OCR 引擎…");
+
+      const previewUrl = URL.createObjectURL(file);
+      setPreview(previewUrl);
+
+      try {
+        const { createWorker } = await import("tesseract.js");
+        const worker = await createWorker("chi_tra+eng", undefined, {
+          logger: (m) => {
+            if (m.status === "recognizing text" && typeof m.progress === "number") {
+              setProgress(Math.round(m.progress * 100));
+              setStatus(`辨識中… ${Math.round(m.progress * 100)}%`);
+            }
+          },
+        });
+
+        setStatus("正在讀取文字…");
+        const { data } = await worker.recognize(file);
+        await worker.terminate();
+
+        const response = await fetch("/api/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: data.text }),
+        });
+
+        if (!response.ok) throw new Error("parse failed");
+
+        const { draft } = (await response.json()) as { draft: ParsedItemDraft };
+        onParsed({
+          draft: { ...draft, rawText: data.text, confidence: draft.confidence },
+          file,
+          previewUrl,
+        });
+        setStatus("辨識完成，請確認下方欄位");
+      } catch {
+        setStatus("辨識失敗，請換張較清楚的照片或改用手動輸入");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onParsed],
+  );
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) void runOcr(file);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div
+        className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center transition hover:border-emerald-400 hover:bg-emerald-50/40 dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-emerald-600"
+        onClick={() => inputRef.current?.click()}
+        onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleFileChange}
+          disabled={loading}
+        />
+        <p className="text-lg font-medium">📷 上傳或拍攝收據／標籤照片</p>
+        <p className="mt-2 text-sm text-zinc-500">
+          OCR 在本機辨識，照片會存到 data/uploads/
+        </p>
+      </div>
+
+      {preview && (
+        <img
+          src={preview}
+          alt="預覽"
+          className="max-h-48 w-full rounded-xl object-contain bg-zinc-100 dark:bg-zinc-900"
+        />
+      )}
+
+      {loading && (
+        <div className="space-y-2">
+          <div className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{status}</p>
+        </div>
+      )}
+
+      {!loading && status && (
+        <p className="text-sm text-emerald-700 dark:text-emerald-400">{status}</p>
+      )}
+    </div>
+  );
+}
