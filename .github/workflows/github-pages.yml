@@ -33,7 +33,7 @@ jobs:
       - name: Install and build
         working-directory: thinghome
         run: |
-          npm ci --no-audit --no-fund
+          npm install --no-audit --no-fund
           npm run build
 
       - name: Verify out has index.html
