@@ -5,8 +5,6 @@ import {
   exportBackupDownload,
   getLastBackupAt,
   importBackupFromFile,
-  isAutoBackupEnabled,
-  setAutoBackupEnabled,
 } from "@/lib/client-api";
 
 interface BackupPanelProps {
@@ -25,7 +23,6 @@ function formatBackupTime(iso: string | null): string {
 
 export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [autoBackup, setAutoBackup] = useState(isAutoBackupEnabled);
   const [lastBackupAt, setLastBackupAt] = useState(getLastBackupAt);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -66,12 +63,6 @@ export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
     }
   }
 
-  function handleAutoBackupChange(enabled: boolean) {
-    setAutoBackup(enabled);
-    setAutoBackupEnabled(enabled);
-    setMessage(enabled ? "已開啟：每次變更會自動下載 JSON 備份" : "已關閉自動下載備份");
-  }
-
   return (
     <div className="modal-overlay p-4">
       <div className="modal-panel max-w-lg">
@@ -107,21 +98,6 @@ export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
           </p>
           <p className="mt-2">上次備份：{formatBackupTime(lastBackupAt)}</p>
         </div>
-
-        <label className="mb-6 flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            className="mt-1"
-            checked={autoBackup}
-            onChange={(e) => handleAutoBackupChange(e.target.checked)}
-          />
-          <span className="text-sm">
-            <span className="font-medium">自動下載 JSON 備份</span>
-            <span className="mt-1 block" style={{ color: "var(--muted)" }}>
-              每次新增、修改或刪除後，約 1.5 秒自動下載一份備份檔
-            </span>
-          </span>
-        </label>
 
         <div className="flex flex-wrap gap-2">
           <button

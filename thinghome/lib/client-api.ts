@@ -7,11 +7,9 @@ import {
   downloadBackupFile,
   getBackupSnapshot,
   getLastBackupAt,
-  isAutoBackupEnabled,
   parseBackupFile,
   saveBackupSnapshot,
-  scheduleAutoBackup,
-  setAutoBackupEnabled,
+  scheduleBackupSnapshot,
   type ThingHomeBackup,
 } from "@/lib/backup";
 import { parseProductText } from "@/lib/parse-text";
@@ -75,7 +73,7 @@ async function buildCurrentBackup(): Promise<ThingHomeBackup> {
 }
 
 function notifyDataChanged() {
-  scheduleAutoBackup(buildCurrentBackup);
+  scheduleBackupSnapshot(buildCurrentBackup);
 }
 
 function ensureDefaultCategories() {
@@ -453,8 +451,4 @@ export async function importBackupFromFile(
   return result;
 }
 
-export {
-  getLastBackupAt,
-  isAutoBackupEnabled,
-  setAutoBackupEnabled,
-};
+export { getLastBackupAt };

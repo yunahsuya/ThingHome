@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import type { Category, ItemInput, ItemSubmitOptions, ParsedItemDraft } from "@/lib/types";
 import { draftToInput, resolveItemImagePaths } from "@/lib/utils";
+import { countDetectedProducts } from "@/lib/parse-text";
 import { createItem, parseText } from "@/lib/client-api";
 import { createEmptyFormEntry, createFormKey, MultiItemForm, type ItemFormEntry } from "./MultiItemForm";
 import { OcrUpload, type OcrResult } from "./OcrUpload";
@@ -57,7 +58,8 @@ export function AddItemPanel({
   function handleOcrParsed(result: OcrResult) {
     setDraft(result.draft);
     const initial = draftToInput(result.draft, "ocr");
-    setEntries(createEntries(initial, result.previewUrl, result.file, 2));
+    const count = countDetectedProducts(result.draft.rawText);
+    setEntries(createEntries(initial, result.previewUrl, result.file, count));
   }
 
   async function handleParseText() {
@@ -69,7 +71,8 @@ export function AddItemPanel({
       const parsed = parseText(textInput);
       setDraft(parsed);
       const initial = draftToInput(parsed, "text");
-      setEntries(createEntries(initial, null, null, 2));
+      const count = countDetectedProducts(parsed.rawText);
+      setEntries(createEntries(initial, null, null, count));
     } catch {
       setParseError("解析失敗");
     } finally {
@@ -78,7 +81,7 @@ export function AddItemPanel({
   }
 
   const startManual = useCallback(() => {
-    setEntries(createEntries({ name: "", source: "manual" }, null, null, 2));
+    setEntries(createEntries({ name: "", source: "manual" }, null, null, 1));
   }, []);
 
   async function saveItems(
@@ -208,9 +211,13 @@ export function AddItemPanel({
               categories={categories}
               enableOcr={tab === "photo"}
               submitLabel={
-                tab === "manual"
-                  ? `新增 ${entries.length} 項商品`
-                  : `確認新增 ${entries.length} 項`
+                entries.length === 1
+                  ? tab === "manual"
+                    ? "新增商品"
+                    : "確認新增"
+                  : tab === "manual"
+                    ? `新增 ${entries.length} 項商品`
+                    : `確認新增 ${entries.length} 項`
               }
               onCategoriesChanged={onCategoriesChanged}
               onAddEntry={() =>

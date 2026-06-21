@@ -130,6 +130,34 @@ function extractName(text: string): string | null {
   return candidates.sort((a, b) => b.length - a.length)[0] ?? null;
 }
 
+/** 從收據文字推測有幾項商品（用於決定新增表單數量） */
+export function countDetectedProducts(rawText: string): number {
+  const text = rawText.trim();
+  if (!text) return 1;
+
+  const itemCountMatch = text.match(/(\d+)\s*個?\s*品\s*項/);
+  if (itemCountMatch) {
+    const count = Number(itemCountMatch[1]);
+    if (count >= 2 && count <= 20) return count;
+  }
+
+  const skip =
+    /(?:總計|合計|小計|節省|營業稅|稅|免費|確認|discount|-\$)/i;
+  const priceLines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(
+      (line) =>
+        line.length > 0 &&
+        /\$\s*[\d,]+(?:\.\d{1,2})?/.test(line) &&
+        !skip.test(line),
+    );
+
+  if (priceLines.length >= 2) return Math.min(priceLines.length, 20);
+
+  return 1;
+}
+
 export function parseProductText(rawText: string): ParsedItemDraft {
   const text = rawText.trim();
   const dates = extractDates(text);

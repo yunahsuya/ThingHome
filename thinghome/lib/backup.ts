@@ -2,7 +2,6 @@ import type { Category, Item } from "@/lib/types";
 
 export const BACKUP_VERSION = 1;
 export const BACKUP_SNAPSHOT_KEY = "thinghome:backup-snapshot";
-export const AUTO_BACKUP_KEY = "thinghome:auto-backup-file";
 export const LAST_BACKUP_AT_KEY = "thinghome:last-backup-at";
 
 export interface BackupImage {
@@ -112,15 +111,6 @@ export function getLastBackupAt(): string | null {
   return localStorage.getItem(LAST_BACKUP_AT_KEY);
 }
 
-export function isAutoBackupEnabled(): boolean {
-  const value = localStorage.getItem(AUTO_BACKUP_KEY);
-  return value !== "false";
-}
-
-export function setAutoBackupEnabled(enabled: boolean) {
-  localStorage.setItem(AUTO_BACKUP_KEY, enabled ? "true" : "false");
-}
-
 export function parseBackupFile(raw: unknown): ThingHomeBackup {
   if (!raw || typeof raw !== "object") {
     throw new Error("備份格式不正確");
@@ -201,9 +191,7 @@ export function getBackupSnapshot(): ThingHomeBackup | null {
 let backupTimer: ReturnType<typeof setTimeout> | null = null;
 let lastBackupHash = "";
 
-export function scheduleAutoBackup(build: () => Promise<ThingHomeBackup>) {
-  if (!isAutoBackupEnabled()) return;
-
+export function scheduleBackupSnapshot(build: () => Promise<ThingHomeBackup>) {
   if (backupTimer) clearTimeout(backupTimer);
   backupTimer = setTimeout(() => {
     void (async () => {
@@ -218,9 +206,8 @@ export function scheduleAutoBackup(build: () => Promise<ThingHomeBackup>) {
         lastBackupHash = hash;
 
         saveBackupSnapshot(backup);
-        downloadBackupFile(backup);
       } catch {
-        // 自動備份失敗不影響正常使用
+        // 快照失敗不影響正常使用
       }
     })();
   }, 1500);
