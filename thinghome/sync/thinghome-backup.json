@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": "2026-06-21T16:19:03.733Z",
+  "exportedAt": "2026-06-21T16:19:41.952Z",
   "items": [
     {
       "id": "caaf758a-99ae-4edc-b0eb-241d980395ea",
@@ -135,7 +135,7 @@
       "categoryId": "80f7c54e-bab2-4c07-a3e9-a80bd2f6078d",
       "location": "公司",
       "purchaseDate": "2026-06-10",
-      "expiryDate": "1937-06-10",
+      "expiryDate": null,
       "shelfLifeDays": null,
       "quantity": 36,
       "remaining": 36,
@@ -148,7 +148,7 @@
       "source": "ocr",
       "batchId": null,
       "createdAt": "2026-06-21T15:07:48.800Z",
-      "updatedAt": "2026-06-21T15:59:44.399Z"
+      "updatedAt": "2026-06-21T16:19:36.940Z"
     }
   ],
   "categories": [
