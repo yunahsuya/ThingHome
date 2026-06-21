@@ -23,6 +23,18 @@ import {
   type FolderSyncInfo,
   type FolderSyncResult,
 } from "@/lib/folder-sync";
+import {
+  disconnectGitHubSync,
+  getGitHubSyncConfig,
+  getGitHubSyncInfo,
+  saveGitHubSyncConfig,
+  scheduleGitHubSync,
+  syncWithGitHub,
+  DEFAULT_GITHUB_PATH,
+  DEFAULT_GITHUB_REPO,
+  type GitHubSyncInfo,
+  type GitHubSyncResult,
+} from "@/lib/github-sync";
 import { parseProductText } from "@/lib/parse-text";
 import type {
   Category,
@@ -111,9 +123,38 @@ async function runFolderSync(): Promise<FolderSyncResult> {
   return result;
 }
 
+async function runGitHubSync(): Promise<GitHubSyncResult> {
+  const items = readAllItems();
+  const categories = readAllCategories();
+  const localBackup = await buildCurrentBackup();
+
+  const result = await syncWithGitHub({
+    localBackup,
+    localTimestamp: getLocalDataTimestamp(items, categories),
+    applyRemote: async (backup) => {
+      await applyBackup(
+        backup,
+        "replace",
+        readAllItems,
+        writeAllItems,
+        readAllCategories,
+        writeAllCategories,
+        saveImageBlob,
+      );
+    },
+  });
+
+  if (result.action === "pushed" && result.localAt) {
+    saveBackupSnapshot({ ...localBackup, exportedAt: result.localAt });
+  }
+
+  return result;
+}
+
 function notifyDataChanged() {
   scheduleBackupSnapshot(buildCurrentBackup);
   scheduleFolderSync(runFolderSync);
+  scheduleGitHubSync(runGitHubSync);
 }
 
 function ensureDefaultCategories() {
@@ -205,8 +246,8 @@ export async function createItem(input: ItemInput): Promise<Item> {
     purchaseDate: input.purchaseDate ?? null,
     expiryDate: input.expiryDate ?? null,
     shelfLifeDays: input.shelfLifeDays ?? null,
-    quantity: input.quantity ?? 1,
-    remaining: input.remaining ?? input.quantity ?? 1,
+    quantity: input.quantity ?? 0,
+    remaining: input.remaining ?? input.quantity ?? 0,
     price: input.price ?? null,
     unit: input.unit ?? null,
     notes: input.notes ?? null,
@@ -250,6 +291,12 @@ export async function updateItem(
       input.location !== undefined
         ? input.location?.trim() || null
         : current.location,
+    quantity:
+      input.quantity !== undefined ? input.quantity ?? 0 : current.quantity,
+    remaining:
+      input.remaining !== undefined
+        ? input.remaining ?? input.quantity ?? current.quantity ?? 0
+        : current.remaining,
     imagePaths: nextImagePaths,
     updatedAt: new Date().toISOString(),
   };
@@ -491,6 +538,40 @@ export async function importBackupFromFile(
   return result;
 }
 
+export async function configureGitHubSync(input: {
+  token: string;
+  repo?: string;
+  path?: string;
+}): Promise<GitHubSyncResult> {
+  saveGitHubSyncConfig(input);
+  return runGitHubSync();
+}
+
+export async function disconnectGitHubSyncSettings(): Promise<void> {
+  disconnectGitHubSync();
+}
+
+export async function syncGitHubNow(): Promise<GitHubSyncResult> {
+  return runGitHubSync();
+}
+
+export async function syncGitHubOnLoad(): Promise<GitHubSyncResult | null> {
+  if (!getGitHubSyncInfo().configured) return null;
+  return runGitHubSync();
+}
+
+export async function syncOnLoad(): Promise<{ pulled: boolean }> {
+  let pulled = false;
+
+  const folderResult = await syncFolderOnLoad();
+  if (folderResult?.action === "pulled") pulled = true;
+
+  const githubResult = await syncGitHubOnLoad();
+  if (githubResult?.action === "pulled") pulled = true;
+
+  return { pulled };
+}
+
 export async function bindSyncFolder(): Promise<FolderSyncResult> {
   const result = await pickSyncFolder();
   if (result.action === "unsupported" || result.action === "permission-denied") {
@@ -518,9 +599,14 @@ export async function syncFolderOnLoad(): Promise<FolderSyncResult | null> {
 }
 
 export {
+  DEFAULT_GITHUB_PATH,
+  DEFAULT_GITHUB_REPO,
   getFolderSyncInfo,
+  getGitHubSyncInfo,
   getLastBackupAt,
   isFolderSyncSupported,
   type FolderSyncInfo,
   type FolderSyncResult,
+  type GitHubSyncInfo,
+  type GitHubSyncResult,
 };

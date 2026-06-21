@@ -28,8 +28,8 @@ const empty: ItemInput = {
   purchaseDate: null,
   expiryDate: null,
   shelfLifeDays: null,
-  quantity: 1,
-  remaining: 1,
+  quantity: null,
+  remaining: null,
   price: null,
   unit: null,
   notes: null,
@@ -45,8 +45,8 @@ function toItemInput(initial: ItemInput | Item): ItemInput {
     purchaseDate: initial.purchaseDate ?? null,
     expiryDate: initial.expiryDate ?? null,
     shelfLifeDays: initial.shelfLifeDays ?? null,
-    quantity: initial.quantity ?? 1,
-    remaining: initial.remaining ?? 1,
+    quantity: initial.quantity ?? null,
+    remaining: initial.remaining ?? null,
     price: initial.price ?? null,
     unit: initial.unit ?? null,
     notes: initial.notes ?? null,
@@ -194,8 +194,14 @@ export function ItemForm({
           ...form,
           name: form.name.trim(),
           location: form.location?.trim() || null,
-          quantity: Number(form.quantity) || 1,
-          remaining: Number(form.remaining) || 0,
+          quantity:
+            form.quantity !== null && form.quantity !== undefined
+              ? Number(form.quantity)
+              : null,
+          remaining:
+            form.remaining !== null && form.remaining !== undefined
+              ? Number(form.remaining)
+              : null,
           shelfLifeDays: form.shelfLifeDays ? Number(form.shelfLifeDays) : null,
           price:
             form.price !== null && form.price !== undefined
@@ -358,6 +364,7 @@ export function ItemForm({
             onChange={(e) =>
               updateForm({ ...form, expiryDate: e.target.value || null })
             }
+            placeholder="選填"
           />
         </Field>
       </div>
@@ -381,12 +388,16 @@ export function ItemForm({
         <Field label="購買數量">
           <input
             type="number"
-            min={1}
+            min={0}
             className="input"
-            value={form.quantity ?? 1}
+            value={form.quantity ?? ""}
             onChange={(e) =>
-              updateForm({ ...form, quantity: Number(e.target.value) || 1 })
+              updateForm({
+                ...form,
+                quantity: e.target.value ? Number(e.target.value) : null,
+              })
             }
+            placeholder="選填"
           />
         </Field>
         <Field label="剩餘數量">
@@ -394,10 +405,14 @@ export function ItemForm({
             type="number"
             min={0}
             className="input"
-            value={form.remaining ?? 1}
+            value={form.remaining ?? ""}
             onChange={(e) =>
-              updateForm({ ...form, remaining: Number(e.target.value) || 0 })
+              updateForm({
+                ...form,
+                remaining: e.target.value ? Number(e.target.value) : null,
+              })
             }
+            placeholder="選填"
           />
         </Field>
       </div>

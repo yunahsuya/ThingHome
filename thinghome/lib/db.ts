@@ -24,8 +24,8 @@ function normalizeItem(raw: RawItem): Item {
     purchaseDate: raw.purchaseDate ?? null,
     expiryDate: raw.expiryDate ?? null,
     shelfLifeDays: raw.shelfLifeDays ?? null,
-    quantity: raw.quantity ?? 1,
-    remaining: raw.remaining ?? raw.quantity ?? 1,
+    quantity: raw.quantity ?? 0,
+    remaining: raw.remaining ?? raw.quantity ?? 0,
     price: raw.price ?? null,
     unit: raw.unit ?? null,
     notes: raw.notes ?? null,
@@ -82,8 +82,8 @@ export async function createItem(input: ItemInput): Promise<Item> {
     purchaseDate: input.purchaseDate ?? null,
     expiryDate: input.expiryDate ?? null,
     shelfLifeDays: input.shelfLifeDays ?? null,
-    quantity: input.quantity ?? 1,
-    remaining: input.remaining ?? input.quantity ?? 1,
+    quantity: input.quantity ?? 0,
+    remaining: input.remaining ?? input.quantity ?? 0,
     price: input.price ?? null,
     unit: input.unit ?? null,
     notes: input.notes ?? null,
@@ -126,6 +126,12 @@ export async function updateItem(
       input.location !== undefined
         ? input.location?.trim() || null
         : current.location,
+    quantity:
+      input.quantity !== undefined ? input.quantity ?? 0 : current.quantity,
+    remaining:
+      input.remaining !== undefined
+        ? input.remaining ?? input.quantity ?? current.quantity ?? 0
+        : current.remaining,
     imagePaths: nextImagePaths,
     updatedAt: new Date().toISOString(),
   };

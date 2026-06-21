@@ -61,10 +61,6 @@ export function ItemList({
       .filter((item): item is Item => item !== undefined)
       .map((item) => ({ key: item.id, initial: item }));
 
-    if (entries.length === 1) {
-      entries.push(createEmptyFormEntry("manual"));
-    }
-
     setEditEntries(entries);
   }
 
@@ -366,7 +362,11 @@ function ItemCard({
             <Stat label="到期日" value={formatDate(item.expiryDate)} />
             <Stat
               label="剩餘"
-              value={`${item.remaining}${item.unit ? ` ${item.unit}` : ""} / ${item.quantity}${item.unit ? ` ${item.unit}` : ""}`}
+              value={
+                item.quantity > 0
+                  ? `${item.remaining}${item.unit ? ` ${item.unit}` : ""} / ${item.quantity}${item.unit ? ` ${item.unit}` : ""}`
+                  : "—"
+              }
             />
             <Stat label="價格" value={formatCurrency(item.price)} />
           </dl>

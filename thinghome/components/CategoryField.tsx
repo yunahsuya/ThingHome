@@ -30,8 +30,7 @@ export function CategoryField({
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleAdd() {
     if (!newName.trim()) return;
 
     setAdding(true);
@@ -113,21 +112,28 @@ export function CategoryField({
           className="space-y-3 rounded-xl border p-3"
           style={{ borderColor: "var(--border-strong)" }}
         >
-          <form onSubmit={handleAdd} className="flex gap-2">
+          <div className="flex gap-2">
             <input
               className="input flex-1 text-sm"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleAdd();
+                }
+              }}
               placeholder="新分類名稱"
             />
             <button
-              type="submit"
+              type="button"
               className="btn-primary shrink-0 text-sm"
               disabled={adding || !newName.trim()}
+              onClick={() => void handleAdd()}
             >
               {adding ? "新增中…" : "新增"}
             </button>
-          </form>
+          </div>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
 

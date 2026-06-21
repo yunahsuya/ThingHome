@@ -3,14 +3,21 @@
 import { useRef, useState } from "react";
 import {
   bindSyncFolder,
+  configureGitHubSync,
+  DEFAULT_GITHUB_PATH,
+  DEFAULT_GITHUB_REPO,
+  disconnectGitHubSyncSettings,
   exportBackupDownload,
   getFolderSyncInfo,
+  getGitHubSyncInfo,
   getLastBackupAt,
   importBackupFromFile,
   isFolderSyncSupported,
   syncFolderNow,
+  syncGitHubNow,
   unbindSyncFolder,
   type FolderSyncInfo,
+  type GitHubSyncInfo,
 } from "@/lib/client-api";
 
 interface BackupPanelProps {
@@ -27,12 +34,17 @@ function formatBackupTime(iso: string | null): string {
   }
 }
 
-function formatSyncAction(action: string): string {
+function formatSyncAction(action: string, target: "folder" | "github"): string {
+  const from =
+    target === "github" ? "GitHub" : "雲端資料夾";
+  const to =
+    target === "github" ? "GitHub" : "雲端資料夾";
+
   switch (action) {
     case "pulled":
-      return "已從雲端資料夾載入較新資料";
+      return `已從${from}載入較新資料`;
     case "pushed":
-      return "已寫入較新資料到雲端資料夾";
+      return `已寫入較新資料到${to}`;
     case "unchanged":
       return "資料已是最新，無需同步";
     default:
@@ -44,16 +56,29 @@ export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lastBackupAt, setLastBackupAt] = useState(getLastBackupAt);
   const [syncInfo, setSyncInfo] = useState<FolderSyncInfo>(getFolderSyncInfo);
+  const [githubInfo, setGithubInfo] = useState<GitHubSyncInfo>(getGitHubSyncInfo);
+  const [githubRepo, setGithubRepo] = useState(
+    () => getGitHubSyncInfo().repo ?? DEFAULT_GITHUB_REPO,
+  );
+  const [githubPath, setGithubPath] = useState(
+    () => getGitHubSyncInfo().path ?? DEFAULT_GITHUB_PATH,
+  );
+  const [githubToken, setGithubToken] = useState("");
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [binding, setBinding] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [githubSaving, setGithubSaving] = useState(false);
+  const [githubSyncing, setGithubSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   function refreshSyncInfo() {
     setSyncInfo(getFolderSyncInfo());
+    setGithubInfo(getGitHubSyncInfo());
     setLastBackupAt(getLastBackupAt());
+    if (!githubRepo) setGithubRepo(getGitHubSyncInfo().repo ?? DEFAULT_GITHUB_REPO);
+    if (!githubPath) setGithubPath(getGitHubSyncInfo().path ?? DEFAULT_GITHUB_PATH);
   }
 
   async function handleExport() {
@@ -90,6 +115,84 @@ export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
     }
   }
 
+  async function handleSaveGitHub() {
+    setGithubSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await configureGitHubSync({
+        token: githubToken,
+        repo: githubRepo,
+        path: githubPath,
+      });
+      refreshSyncInfo();
+      setGithubToken("");
+
+      if (result.action === "auth-failed") {
+        setError(result.message ?? "GitHub Token 無效");
+        return;
+      }
+      if (result.action === "error") {
+        setError(result.message ?? "GitHub 同步失敗");
+        return;
+      }
+
+      const syncMessage = formatSyncAction(result.action, "github");
+      setMessage(syncMessage || "已連結 GitHub 並完成同步");
+      if (result.action === "pulled") onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "GitHub 設定失敗");
+    } finally {
+      setGithubSaving(false);
+    }
+  }
+
+  async function handleGitHubSyncNow() {
+    setGithubSyncing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await syncGitHubNow();
+      refreshSyncInfo();
+
+      if (result.action === "not-configured") {
+        setError("尚未設定 GitHub 同步");
+        return;
+      }
+      if (result.action === "auth-failed") {
+        setError(result.message ?? "GitHub Token 無效，請重新設定");
+        return;
+      }
+      if (result.action === "error") {
+        setError(result.message ?? "GitHub 同步失敗");
+        return;
+      }
+
+      const syncMessage = formatSyncAction(result.action, "github");
+      if (syncMessage) setMessage(syncMessage);
+      if (result.action === "pulled") onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "GitHub 同步失敗");
+    } finally {
+      setGithubSyncing(false);
+    }
+  }
+
+  async function handleDisconnectGitHub() {
+    if (
+      !window.confirm(
+        "解除後不會刪除 GitHub 上的備份檔，但 App 將不再自動同步。確定要解除嗎？",
+      )
+    ) {
+      return;
+    }
+
+    await disconnectGitHubSyncSettings();
+    refreshSyncInfo();
+    setGithubToken("");
+    setMessage("已解除 GitHub 同步");
+  }
+
   async function handleBindFolder() {
     setBinding(true);
     setError(null);
@@ -107,7 +210,7 @@ export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
         return;
       }
 
-      const syncMessage = formatSyncAction(result.action);
+      const syncMessage = formatSyncAction(result.action, "folder");
       setMessage(
         [result.message, syncMessage].filter(Boolean).join("。") ||
           "已綁定同步資料夾",
@@ -139,7 +242,7 @@ export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
         return;
       }
 
-      const syncMessage = formatSyncAction(result.action);
+      const syncMessage = formatSyncAction(result.action, "folder");
       if (syncMessage) setMessage(syncMessage);
       if (result.action === "pulled") onChanged();
     } catch (err) {
@@ -172,7 +275,7 @@ export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
           <div>
             <h2 className="text-xl font-semibold">資料備份與同步</h2>
             <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-              匯出 JSON 備份，或綁定雲端同步資料夾自動同步
+              手機建議用 GitHub 同步；電腦也可用雲端資料夾
             </p>
           </div>
           <button
@@ -194,7 +297,107 @@ export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
           }}
         >
           <p className="font-medium" style={{ color: "var(--foreground)" }}>
-            雲端資料夾同步
+            GitHub 同步（推薦手機）
+          </p>
+          <p className="mt-2">
+            新增商品後會自動寫入 GitHub 儲存庫的{" "}
+            <strong style={{ color: "var(--foreground)" }}>thinghome-backup.json</strong>
+            ，手機、電腦都能讀到同一份資料。
+          </p>
+          <p className="mt-2 text-xs">
+            需建立 GitHub Personal Access Token（勾選 repo 或 Contents 讀寫權限）。
+            Token 只存在這台裝置的瀏覽器，不會上傳到別處。
+          </p>
+
+          <div className="mt-3 space-y-2">
+            <label className="block">
+              <span className="mb-1 block text-xs">儲存庫（owner/repo）</span>
+              <input
+                type="text"
+                className="search-input w-full"
+                value={githubRepo}
+                onChange={(e) => setGithubRepo(e.target.value)}
+                placeholder={DEFAULT_GITHUB_REPO}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs">檔案路徑</span>
+              <input
+                type="text"
+                className="search-input w-full"
+                value={githubPath}
+                onChange={(e) => setGithubPath(e.target.value)}
+                placeholder={DEFAULT_GITHUB_PATH}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs">GitHub Token</span>
+              <input
+                type="password"
+                className="search-input w-full"
+                value={githubToken}
+                onChange={(e) => setGithubToken(e.target.value)}
+                placeholder={
+                  githubInfo.hasToken ? "已設定（留空則沿用）" : "ghp_… 或 github_pat_…"
+                }
+                autoComplete="off"
+              />
+            </label>
+          </div>
+
+          {githubInfo.configured && (
+            <p className="mt-2">
+              已連結：<strong style={{ color: "var(--foreground)" }}>{githubInfo.repo}</strong>
+              <span className="mx-1">·</span>
+              {githubInfo.path}
+            </p>
+          )}
+          {githubInfo.configured && (
+            <p className="mt-1">上次同步：{formatBackupTime(githubInfo.lastSyncAt)}</p>
+          )}
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={githubSaving || githubSyncing}
+              onClick={() => void handleSaveGitHub()}
+            >
+              {githubSaving ? "儲存中…" : githubInfo.configured ? "更新設定並同步" : "連結 GitHub"}
+            </button>
+            {githubInfo.configured && (
+              <>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={githubSyncing || githubSaving}
+                  onClick={() => void handleGitHubSyncNow()}
+                >
+                  {githubSyncing ? "同步中…" : "立即同步"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={githubSaving || githubSyncing}
+                  onClick={() => void handleDisconnectGitHub()}
+                >
+                  解除連結
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div
+          className="mb-4 rounded-xl border p-4 text-sm leading-relaxed"
+          style={{
+            borderColor: "var(--border-strong)",
+            background: "var(--surface-raised)",
+            color: "var(--muted)",
+          }}
+        >
+          <p className="font-medium" style={{ color: "var(--foreground)" }}>
+            雲端資料夾同步（電腦）
           </p>
           <p className="mt-2">
             選擇 OneDrive、iCloud 雲碟或 Google 雲端硬碟內的資料夾，App
@@ -217,7 +420,7 @@ export function BackupPanel({ onClose, onChanged }: BackupPanelProps) {
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              className="btn-primary"
+              className="btn-secondary"
               disabled={!folderSyncSupported || binding || syncing}
               onClick={() => void handleBindFolder()}
             >

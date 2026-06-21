@@ -38,8 +38,8 @@ export interface ItemInput {
   purchaseDate?: string | null;
   expiryDate?: string | null;
   shelfLifeDays?: number | null;
-  quantity?: number;
-  remaining?: number;
+  quantity?: number | null;
+  remaining?: number | null;
   price?: number | null;
   unit?: string | null;
   notes?: string | null;
