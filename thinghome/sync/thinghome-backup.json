@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": "2026-06-21T16:21:48.045Z",
+  "exportedAt": "2026-06-21T16:24:40.981Z",
   "items": [
     {
       "id": "caaf758a-99ae-4edc-b0eb-241d980395ea",
@@ -152,8 +152,8 @@
     },
     {
       "id": "4d9e7e33-7c03-4eb5-a65e-81e77571018c",
-      "name": "法 課程 (限時 贈 _... 了 才 - 存 劑 7 月",
-      "categoryId": null,
+      "name": "法 課程",
+      "categoryId": "17e20f04-3c85-48a8-bf7a-648524113d22",
       "location": null,
       "purchaseDate": null,
       "expiryDate": null,
@@ -162,14 +162,14 @@
       "remaining": 1,
       "price": 88,
       "unit": null,
-      "notes": "00:21 戰 (@) al 4G 88%\n< 我 的 課程\nwnt SEX (EmE2 多\n法 課程 (限時 贈 _... 了 才 - 存 劑 7 月\nmE 菩\n\n9 cheryl\n\nAria 全 方位 打 底 多 1]\n\nmak (限時 贈 _TO... 會 J\nEER 1s = 5 ik\n\n人 Aria 穩 打 3 階段 | 基礎 打 底 一 題 威 養成 一 考 前 衝刺",
+      "notes": null,
       "imagePaths": [
         "68e35e31-bf5b-41df-8604-cc37125d9424.png"
       ],
       "source": "ocr",
       "batchId": null,
       "createdAt": "2026-06-21T16:21:15.455Z",
-      "updatedAt": "2026-06-21T16:21:15.455Z"
+      "updatedAt": "2026-06-21T16:21:49.583Z"
     }
   ],
   "categories": [
