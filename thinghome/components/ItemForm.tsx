@@ -3,7 +3,8 @@
 import React from "react";
 import type { Category, Item, ItemInput, ItemSubmitOptions } from "@/lib/types";
 import { runOcrOnFile } from "@/lib/ocr";
-import { getImageUrl, mergeDraftIntoForm } from "@/lib/utils";
+import { getImageUrl as resolveStoredImageUrl } from "@/lib/client-api";
+import { mergeDraftIntoForm } from "@/lib/utils";
 import { CategoryField } from "./CategoryField";
 
 export interface ItemFormProps {
@@ -232,9 +233,9 @@ export function ItemForm({
                 <ImageThumb src={imagePreview} alt="OCR 照片" />
               )}
               {existingPaths.map((path) => (
-                <ImageThumb
+                <StoredImageThumb
                   key={path}
-                  src={getImageUrl(path)!}
+                  path={path}
                   alt="商品照片"
                   onRemove={() => removeExistingImage(path)}
                 />
@@ -457,6 +458,39 @@ export function ItemForm({
       )}
     </Wrapper>
   );
+}
+
+function StoredImageThumb({
+  path,
+  alt,
+  onRemove,
+}: {
+  path: string;
+  alt: string;
+  onRemove?: () => void;
+}) {
+  const [src, setSrc] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void resolveStoredImageUrl(path).then((url) => {
+      if (!cancelled) setSrc(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
+
+  if (!src) {
+    return (
+      <div
+        className="aspect-square w-full rounded-xl"
+        style={{ background: "var(--accent-soft)" }}
+      />
+    );
+  }
+
+  return <ImageThumb src={src} alt={alt} onRemove={onRemove} />;
 }
 
 function ImageThumb({

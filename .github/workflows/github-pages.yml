@@ -1,11 +1,6 @@
-# 倉庫根目錄在「外層」，Vite 專案在子資料夾 tour/
-# 網址：https://yunahsuya.github.io/tour/
+# Vite/Next 專案在子資料夾 thinghome/
+# 網址：https://yunahsuya.github.io/ThingHome/
 # Settings → Pages → Source 請選「GitHub Actions」
-#
-# 若 Actions 全綠但網址仍 404：到 Code → .github/workflows/ 檢查是否還有
-# 「static-pages-deploy」「pages-build-deployment」等「另一套」Pages 流程。
-# 多個流程都會 deploy 到同一個 github-pages 環境時，「最後跑完的那個」會蓋掉網站；
-# 若那是空專案或靜態範本，就會變成 404。請只保留這一個 workflow，其餘刪除或停用。
 
 name: Deploy GitHub Pages
 
@@ -20,7 +15,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: tour-vite-pages
+  group: thinghome-pages
   cancel-in-progress: true
 
 jobs:
@@ -31,33 +26,26 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "24"
           cache: npm
-          cache-dependency-path: tour/package-lock.json
+          cache-dependency-path: thinghome/package-lock.json
 
       - name: Install and build
-        working-directory: tour
-        env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        working-directory: thinghome
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
 
-      - name: Verify dist has index.html
+      - name: Verify out has index.html
         run: |
-          ls -la tour/dist
-          test -f tour/dist/index.html
+          ls -la thinghome/out
+          test -f thinghome/out/index.html
 
       - uses: actions/configure-pages@v4
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: tour/dist
+          path: thinghome/out
 
   deploy:
     runs-on: ubuntu-latest

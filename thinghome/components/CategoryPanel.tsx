@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Category } from "@/lib/types";
+import {
+  createCategory,
+  deleteCategory,
+  listCategories,
+  updateCategory,
+} from "@/lib/client-api";
 
 interface CategoryPanelProps {
   onClose: () => void;
@@ -20,9 +26,8 @@ export function CategoryPanel({ onClose, onChanged }: CategoryPanelProps) {
   const [error, setError] = useState<string | null>(null);
 
   const loadCategories = useCallback(async () => {
-    const res = await fetch("/api/categories");
-    const data = (await res.json()) as { categories: Category[] };
-    setCategories(data.categories);
+    const categories = await listCategories();
+    setCategories(categories);
     setLoading(false);
   }, []);
 
@@ -37,12 +42,7 @@ export function CategoryPanel({ onClose, onChanged }: CategoryPanelProps) {
     setAdding(true);
     setError(null);
     try {
-      const res = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-      if (!res.ok) throw new Error("新增失敗");
+      await createCategory({ name: newName.trim() });
       setNewName("");
       await loadCategories();
       onChanged();
@@ -59,12 +59,8 @@ export function CategoryPanel({ onClose, onChanged }: CategoryPanelProps) {
     setSavingId(id);
     setError(null);
     try {
-      const res = await fetch(`/api/categories/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName.trim() }),
-      });
-      if (!res.ok) throw new Error("更新失敗");
+      const updated = await updateCategory(id, { name: editName.trim() });
+      if (!updated) throw new Error("更新失敗");
       setEditingId(null);
       await loadCategories();
       onChanged();
@@ -83,10 +79,8 @@ export function CategoryPanel({ onClose, onChanged }: CategoryPanelProps) {
     setDeletingId(category.id);
     setError(null);
     try {
-      const res = await fetch(`/api/categories/${category.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("刪除失敗");
+      const ok = await deleteCategory(category.id);
+      if (!ok) throw new Error("刪除失敗");
       await loadCategories();
       onChanged();
     } catch {

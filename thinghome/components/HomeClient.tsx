@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Category, Item } from "@/lib/types";
 import { getDaysRemaining } from "@/lib/parse-text";
+import { listCategories, listItems } from "@/lib/client-api";
 import { filterItemsBySearch, normalizeSearchQuery } from "@/lib/search";
 import { AddItemPanel } from "./AddItemPanel";
 import { CategoryPanel } from "./CategoryPanel";
@@ -18,16 +19,14 @@ export function HomeClient() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const loadItems = useCallback(async () => {
-    const res = await fetch("/api/items");
-    const data = (await res.json()) as { items: Item[] };
-    setItems(data.items);
+    const items = await listItems();
+    setItems(items);
     setLoading(false);
   }, []);
 
   const loadCategories = useCallback(async () => {
-    const res = await fetch("/api/categories");
-    const data = (await res.json()) as { categories: Category[] };
-    setCategories(data.categories);
+    const categories = await listCategories();
+    setCategories(categories);
   }, []);
 
   const loadAll = useCallback(async () => {

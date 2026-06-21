@@ -1,3 +1,4 @@
+import { parseProductText } from "@/lib/parse-text";
 import type { ParsedItemDraft } from "@/lib/types";
 
 export interface OcrProgress {
@@ -25,14 +26,6 @@ export async function runOcrOnFile(
   const { data } = await worker.recognize(file);
   await worker.terminate();
 
-  const response = await fetch("/api/parse", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: data.text }),
-  });
-
-  if (!response.ok) throw new Error("parse failed");
-
-  const { draft } = (await response.json()) as { draft: ParsedItemDraft };
+  const draft = parseProductText(data.text);
   return { ...draft, rawText: data.text, confidence: draft.confidence };
 }

@@ -2,13 +2,16 @@
 
 import React from "react";
 import { createPortal } from "react-dom";
+import { getImageUrls as resolveImageUrls } from "@/lib/client-api";
 
 interface ItemImageGalleryProps {
-  urls: string[];
+  urls?: string[];
+  paths?: string[];
   alt: string;
 }
 
-export function ItemImageGallery({ urls, alt }: ItemImageGalleryProps) {
+export function ItemImageGallery({ urls: urlsProp, paths, alt }: ItemImageGalleryProps) {
+  const [urls, setUrls] = React.useState<string[]>(urlsProp ?? []);
   const [index, setIndex] = React.useState(0);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
@@ -17,6 +20,26 @@ export function ItemImageGallery({ urls, alt }: ItemImageGalleryProps) {
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  React.useEffect(() => {
+    if (urlsProp) {
+      setUrls(urlsProp);
+      return;
+    }
+    if (!paths?.length) {
+      setUrls([]);
+      return;
+    }
+
+    let cancelled = false;
+    void resolveImageUrls(paths).then((resolved) => {
+      if (!cancelled) setUrls(resolved);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [paths, urlsProp]);
 
   React.useEffect(() => {
     setIndex((current) => (current >= urls.length ? 0 : current));

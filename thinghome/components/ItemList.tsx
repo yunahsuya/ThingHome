@@ -12,9 +12,13 @@ import {
   expiryTone,
   formatCurrency,
   formatDate,
-  getImageUrls,
   resolveItemImagePaths,
 } from "@/lib/utils";
+import {
+  createItem,
+  deleteItem as removeItem,
+  updateItem,
+} from "@/lib/client-api";
 import { normalizeSearchQuery } from "@/lib/search";
 import { ItemImageGallery } from "./ItemImageGallery";
 import { createEmptyFormEntry, MultiItemForm, type ItemFormEntry } from "./MultiItemForm";
@@ -110,19 +114,10 @@ export function ItemList({
       }
 
       if (existingItem) {
-        const res = await fetch(`/api/items/${entry.key}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error("更新失敗");
+        const updated = await updateItem(entry.key, payload);
+        if (!updated) throw new Error("更新失敗");
       } else {
-        const res = await fetch("/api/items", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error("新增失敗");
+        await createItem(payload);
       }
     }
 
@@ -133,11 +128,7 @@ export function ItemList({
   async function deleteBatch(batchItems: Item[]) {
     if (!confirm(`確定刪除這組 ${batchItems.length} 項商品？`)) return;
     setDeletingBatchId(batchItems[0]?.batchId ?? batchItems[0]?.id ?? null);
-    await Promise.all(
-      batchItems.map((item) =>
-        fetch(`/api/items/${item.id}`, { method: "DELETE" }),
-      ),
-    );
+    await Promise.all(batchItems.map((item) => removeItem(item.id)));
     setDeletingBatchId(null);
     onChanged();
   }
@@ -145,7 +136,7 @@ export function ItemList({
   async function deleteItem(item: Item) {
     if (!confirm(`確定刪除「${item.name}」？`)) return;
     setDeletingId(item.id);
-    await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+    await removeItem(item.id);
     setDeletingId(null);
     onChanged();
   }
@@ -317,14 +308,13 @@ function ItemCard({
 }) {
   const days = getDaysRemaining(item);
   const tone = expiryTone(days);
-  const imageUrls = getImageUrls(item.imagePaths);
   const categoryName = item.categoryId ? categoryMap.get(item.categoryId) : null;
 
   return (
     <article className={embedded ? "group" : "card group"}>
       <div className="flex gap-4">
-        {imageUrls.length > 0 ? (
-          <ItemImageGallery urls={imageUrls} alt={item.name} />
+        {item.imagePaths.length > 0 ? (
+          <ItemImageGallery paths={item.imagePaths} alt={item.name} />
         ) : (
           <div
             className="flex h-48 w-48 shrink-0 items-center justify-center rounded-xl text-4xl sm:h-56 sm:w-56 sm:text-5xl"

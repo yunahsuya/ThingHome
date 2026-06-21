@@ -2,6 +2,11 @@
 
 import React from "react";
 import type { Category } from "@/lib/types";
+import {
+  createCategory,
+  deleteCategory,
+  updateCategory,
+} from "@/lib/client-api";
 
 interface CategoryFieldProps {
   categories: Category[];
@@ -32,13 +37,7 @@ export function CategoryField({
     setAdding(true);
     setError(null);
     try {
-      const res = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-      if (!res.ok) throw new Error("新增失敗");
-      const { category } = (await res.json()) as { category: Category };
+      const category = await createCategory({ name: newName.trim() });
       setNewName("");
       onChange(category.id);
       await onCategoriesChanged();
@@ -55,12 +54,8 @@ export function CategoryField({
     setSavingId(id);
     setError(null);
     try {
-      const res = await fetch(`/api/categories/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName.trim() }),
-      });
-      if (!res.ok) throw new Error("更新失敗");
+      const updated = await updateCategory(id, { name: editName.trim() });
+      if (!updated) throw new Error("更新失敗");
       setEditingId(null);
       await onCategoriesChanged();
     } catch {
@@ -78,10 +73,8 @@ export function CategoryField({
     setDeletingId(category.id);
     setError(null);
     try {
-      const res = await fetch(`/api/categories/${category.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("刪除失敗");
+      const ok = await deleteCategory(category.id);
+      if (!ok) throw new Error("刪除失敗");
       if (value === category.id) onChange(null);
       await onCategoriesChanged();
     } catch {

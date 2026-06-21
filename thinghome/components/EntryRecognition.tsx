@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ItemInput, ParsedItemDraft } from "@/lib/types";
 import { draftToInput } from "@/lib/utils";
+import { parseText } from "@/lib/client-api";
 import { OcrUpload, type OcrResult } from "./OcrUpload";
 
 type RecognitionMode = "photo" | "text";
@@ -37,13 +38,7 @@ export function EntryRecognition({ mode, onRecognized }: EntryRecognitionProps) 
     setParseError(null);
 
     try {
-      const res = await fetch("/api/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: textInput }),
-      });
-      if (!res.ok) throw new Error();
-      const { draft } = (await res.json()) as { draft: ParsedItemDraft };
+      const draft = parseText(textInput);
       onRecognized({
         initial: draftToInput(draft, "text"),
         draft,

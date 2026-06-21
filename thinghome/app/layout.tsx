@@ -55,7 +55,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="app-bg min-h-full flex flex-col text-[var(--foreground)]">
-        <SerwistProvider swUrl="/serwist/sw.js">{children}</SerwistProvider>
+        <SerwistProvider swUrl="/ThingHome/serwist/sw.js">{children}</SerwistProvider>
       </body>
     </html>
   );

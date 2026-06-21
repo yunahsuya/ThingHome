@@ -1,4 +1,5 @@
 import type { ItemInput, ParsedItemDraft } from "@/lib/types";
+import { uploadImageFile as storeImageFile } from "@/lib/client-api";
 
 export function draftToInput(
   draft: ParsedItemDraft,
@@ -63,36 +64,8 @@ export function expiryLabel(days: number | null): string {
   return `剩 ${days} 天`;
 }
 
-export function getImageUrl(
-  imagePath: string | null | undefined,
-): string | null {
-  if (!imagePath) return null;
-  return `/api/uploads/${encodeURIComponent(imagePath)}`;
-}
-
-export function getImageUrls(imagePaths: string[] | null | undefined): string[] {
-  if (!imagePaths?.length) return [];
-  return imagePaths
-    .map((path) => getImageUrl(path))
-    .filter((url): url is string => url !== null);
-}
-
 export async function uploadImageFile(file: File): Promise<string> {
-  const form = new FormData();
-  form.append("file", file);
-
-  const res = await fetch("/api/upload", {
-    method: "POST",
-    body: form,
-  });
-
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ?? "照片上傳失敗");
-  }
-
-  const { imagePath } = (await res.json()) as { imagePath: string };
-  return imagePath;
+  return storeImageFile(file);
 }
 
 export async function uploadImageFiles(files: File[]): Promise<string[]> {

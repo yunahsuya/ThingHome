@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import type { Category, ItemInput, ItemSubmitOptions, ParsedItemDraft } from "@/lib/types";
 import { draftToInput, resolveItemImagePaths } from "@/lib/utils";
+import { createItem, parseText } from "@/lib/client-api";
 import { createEmptyFormEntry, createFormKey, MultiItemForm, type ItemFormEntry } from "./MultiItemForm";
 import { OcrUpload, type OcrResult } from "./OcrUpload";
 
@@ -65,13 +66,7 @@ export function AddItemPanel({
     setParseError(null);
 
     try {
-      const res = await fetch("/api/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: textInput }),
-      });
-      if (!res.ok) throw new Error();
-      const { draft: parsed } = (await res.json()) as { draft: ParsedItemDraft };
+      const parsed = parseText(textInput);
       setDraft(parsed);
       const initial = draftToInput(parsed, "text");
       setEntries(createEntries(initial, null, null, 2));
@@ -106,12 +101,7 @@ export function AddItemPanel({
         addedImageFiles: addedFiles.length ? addedFiles : undefined,
       });
 
-      const res = await fetch("/api/items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...input, imagePaths, batchId }),
-      });
-      if (!res.ok) throw new Error("新增失敗");
+      await createItem({ ...input, imagePaths, batchId });
     }
 
     onCreated();
